@@ -1,0 +1,2 @@
+ALTER TABLE "demo_datasets" DROP CONSTRAINT "demo_datasets_count_range";--> statement-breakpoint
+ALTER TABLE "demo_datasets" ADD CONSTRAINT "demo_datasets_count_range" CHECK (("demo_datasets"."config"->>'count')::int BETWEEN 1 AND 2000);

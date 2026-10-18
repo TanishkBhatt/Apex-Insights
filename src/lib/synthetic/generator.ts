@@ -1,0 +1,251 @@
+import { eq, and, count, inArray } from "drizzle-orm";
+import { db } from "@/db";
+import { demoDatasets, demoResponses, demoAnswers, questions, surveys } from "@/db/schema";
+import type { Question, QuestionConfig } from "@/db/schema";
+import { createPrng, pick, pickMultiple, randomInt, sentence } from "./prng";
+import { SurveyServiceError } from "@/lib/surveys/service";
+import { LIMITS } from "@/lib/validation/survey";
+
+export const GENERATOR_VERSION = "v1";
+
+export type DemoGenerationConfig = {
+  count: number;
+  pattern: "balanced" | "random";
+};
+
+type GeneratedAnswer = {
+  questionId: string;
+  value: string | number | boolean | string[];
+};
+
+const TEXT_WORDS = [
+  "focus",
+  "support",
+  "clarity",
+  "balance",
+  "flexibility",
+  "engagement",
+  "pace",
+  "feedback",
+  "resources",
+  "interaction",
+  "structure",
+  "motivation",
+  "relevance",
+  "quality",
+  "guidance",
+];
+
+function generateAnswerForQuestion(rand: () => number, question: Question): GeneratedAnswer {
+  const config = question.config as QuestionConfig;
+  switch (question.type) {
+    case "short_text":
+      return {
+        questionId: question.id,
+        value: sentence(rand, TEXT_WORDS, 5),
+      };
+    case "paragraph":
+      return {
+        questionId: question.id,
+        value: Array.from({ length: randomInt(rand, 2, 4) }, () => sentence(rand, TEXT_WORDS, 6)).join(" "),
+      };
+    case "single_choice":
+    case "dropdown": {
+      const options = config.options ?? [];
+      return {
+        questionId: question.id,
+        value: pick(rand, options),
+      };
+    }
+    case "multiple_choice": {
+      const options = config.options ?? [];
+      const count = randomInt(rand, 1, Math.min(3, options.length));
+      return {
+        questionId: question.id,
+        value: pickMultiple(rand, options, count),
+      };
+    }
+    case "linear_scale": {
+      const min = config.min ?? 1;
+      const max = config.max ?? 5;
+      return {
+        questionId: question.id,
+        value: randomInt(rand, min, max),
+      };
+    }
+    case "yes_no":
+      return {
+        questionId: question.id,
+        value: rand() < 0.5,
+      };
+    default:
+      return {
+        questionId: question.id,
+        value: "",
+      };
+  }
+}
+
+export async function generateSyntheticDataset(
+  ownerId: string,
+  surveyId: string,
+  seed: string,
+  count: number,
+) {
+  if (count < LIMITS.demoResponsesMin || count > LIMITS.demoResponsesMax) {
+    throw new SurveyServiceError(
+      `Demo response count must be between ${LIMITS.demoResponsesMin} and ${LIMITS.demoResponsesMax}.`,
+    );
+  }
+
+  const [survey] = await db
+    .select()
+    .from(surveys)
+    .where(and(eq(surveys.id, surveyId), eq(surveys.ownerId, ownerId)))
+    .limit(1);
+  if (!survey) throw new SurveyServiceError("Survey not found.");
+
+  const questionRows = await db
+    .select()
+    .from(questions)
+    .where(eq(questions.surveyId, surveyId))
+    .orderBy(questions.position);
+
+  if (questionRows.length === 0) {
+    throw new SurveyServiceError("Add at least one question before generating demo data.");
+  }
+
+  return db.transaction(async (tx) => {
+    // Delete existing dataset for this survey (owner-scoped) to regenerate cleanly.
+    const [existing] = await tx
+      .select({ id: demoDatasets.id })
+      .from(demoDatasets)
+      .where(and(eq(demoDatasets.surveyId, surveyId), eq(demoDatasets.ownerId, ownerId)))
+      .limit(1);
+    if (existing) {
+      await tx.delete(demoDatasets).where(eq(demoDatasets.id, existing.id));
+    }
+
+    const [dataset] = await tx
+      .insert(demoDatasets)
+      .values({
+        surveyId,
+        ownerId,
+        seed,
+        generatorVersion: GENERATOR_VERSION,
+        config: { count, pattern: "balanced" },
+      })
+      .returning();
+
+    for (let i = 0; i < count; i += 1) {
+      const rand = createPrng(`${seed}:${i}`);
+      const [response] = await tx
+        .insert(demoResponses)
+        .values({
+          datasetId: dataset.id,
+          seedIndex: i,
+        })
+        .returning({ id: demoResponses.id });
+
+      const answers: Array<{ demoResponseId: string; questionId: string; value: string | number | boolean | string[] }> = [];
+      for (const question of questionRows) {
+        const gen = generateAnswerForQuestion(rand, question);
+        answers.push({
+          demoResponseId: response.id,
+          questionId: gen.questionId,
+          value: gen.value,
+        });
+      }
+      if (answers.length > 0) {
+        await tx.insert(demoAnswers).values(answers);
+      }
+    }
+
+    return dataset;
+  });
+}
+
+export async function deleteDemoDatasetForOwner(ownerId: string, surveyId: string) {
+  const [dataset] = await db
+    .select({ id: demoDatasets.id })
+    .from(demoDatasets)
+    .where(and(eq(demoDatasets.surveyId, surveyId), eq(demoDatasets.ownerId, ownerId)))
+    .limit(1);
+  if (!dataset) return false;
+  await db.delete(demoDatasets).where(eq(demoDatasets.id, dataset.id));
+  return true;
+}
+
+export async function getDemoDatasetForOwner(ownerId: string, surveyId: string) {
+  const [dataset] = await db
+    .select()
+    .from(demoDatasets)
+    .where(and(eq(demoDatasets.surveyId, surveyId), eq(demoDatasets.ownerId, ownerId)))
+    .limit(1);
+  if (!dataset) return null;
+
+  const [row] = await db
+    .select({ total: count() })
+    .from(demoResponses)
+    .where(eq(demoResponses.datasetId, dataset.id));
+  return {
+    ...dataset,
+    responseCount: Number(row?.total ?? 0),
+  };
+}
+
+export async function getDemoResponseRowsForOwner(
+  ownerId: string,
+  surveyId: string,
+  limit = 50,
+) {
+  const dataset = await getDemoDatasetForOwner(ownerId, surveyId);
+  if (!dataset) return null;
+
+  const questionRows = await db
+    .select()
+    .from(questions)
+    .where(eq(questions.surveyId, surveyId))
+    .orderBy(questions.position);
+
+  const responseRows = await db
+    .select({ id: demoResponses.id, seedIndex: demoResponses.seedIndex, submittedAt: demoResponses.submittedAt })
+    .from(demoResponses)
+    .where(eq(demoResponses.datasetId, dataset.id))
+    .orderBy(demoResponses.seedIndex)
+    .limit(limit);
+
+  if (responseRows.length === 0) return { dataset, responses: [], total: dataset.responseCount };
+
+  const answerRows = await db
+    .select({
+      demoResponseId: demoAnswers.demoResponseId,
+      questionId: demoAnswers.questionId,
+      value: demoAnswers.value,
+    })
+    .from(demoAnswers)
+    .where(inArray(demoAnswers.demoResponseId, responseRows.map((r) => r.id)));
+
+  const answerMap = new Map<string, Map<string, unknown>>();
+  for (const row of answerRows) {
+    const per = answerMap.get(row.demoResponseId) ?? new Map();
+    per.set(row.questionId, row.value);
+    answerMap.set(row.demoResponseId, per);
+  }
+
+  return {
+    dataset,
+    total: dataset.responseCount,
+    responses: responseRows.map((r) => ({
+      id: r.id,
+      seedIndex: r.seedIndex,
+      submittedAt: r.submittedAt,
+      answers: questionRows.map((q) => ({
+        questionId: q.id,
+        questionTitle: q.title,
+        type: q.type,
+        value: answerMap.get(r.id)?.get(q.id) ?? null,
+      })),
+    })),
+  };
+}
