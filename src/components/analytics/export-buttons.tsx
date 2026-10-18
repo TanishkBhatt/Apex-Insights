@@ -30,7 +30,7 @@ export function ExportButtons({
           key={format}
           href={`/api/surveys/${surveyId}/export?format=${format}&source=${source}`}
           download
-          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-surface px-2.5 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
         >
           <Icon className="h-3.5 w-3.5" aria-hidden />
           {label}

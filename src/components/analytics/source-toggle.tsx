@@ -44,7 +44,7 @@ export function SourceToggle({
             className={cn(
               "rounded-md px-3 py-1.5 text-sm font-medium transition",
               active
-                ? "bg-white text-indigo-700 shadow-sm"
+                ? "bg-surface text-indigo-700 shadow-sm"
                 : "text-slate-600 hover:text-slate-900",
             )}
           >

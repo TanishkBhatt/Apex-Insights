@@ -1,5 +1,18 @@
 import type { Metadata } from "next";
+import localFont from "next/font/local";
 import "./globals.css";
+
+const poppins = localFont({
+  src: [
+    { path: "./fonts/poppins-400.woff2", weight: "400", style: "normal" },
+    { path: "./fonts/poppins-500.woff2", weight: "500", style: "normal" },
+    { path: "./fonts/poppins-600.woff2", weight: "600", style: "normal" },
+    { path: "./fonts/poppins-700.woff2", weight: "700", style: "normal" },
+  ],
+  variable: "--font-poppins",
+  display: "swap",
+  fallback: ["ui-sans-serif", "system-ui", "sans-serif"],
+});
 
 export const metadata: Metadata = {
   title: {
@@ -16,7 +29,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
+    <html lang="en" className={poppins.variable}>
       <body className="min-h-full antialiased">{children}</body>
     </html>
   );

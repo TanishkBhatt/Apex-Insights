@@ -17,15 +17,25 @@ import {
 import type { DistributionPoint, TimelinePoint } from "@/lib/analytics/compute";
 
 export const CHART_COLORS = [
-  "#4f46e5",
-  "#0891b2",
-  "#16a34a",
-  "#d97706",
-  "#dc2626",
-  "#7c3aed",
-  "#0d9488",
-  "#e11d48",
+  "#fe6e00",
+  "#ffb96d",
+  "#f5a524",
+  "#d4d4d4",
+  "#8a8a8a",
+  "#7b3306",
+  "#ffd7a8",
+  "#874b00",
 ];
+
+const GRID_STROKE = "#2e2e2e";
+const TICK_FILL = "#9c9c9c";
+
+export const TOOLTIP_STYLE = {
+  backgroundColor: "#1f1f1f",
+  border: "1px solid #3a3a3a",
+  borderRadius: "0.5rem",
+  color: "#f5f5f5",
+} as const;
 
 function truncate(label: string, max = 22): string {
   return label.length > max ? `${label.slice(0, max - 1)}…` : label;
@@ -36,18 +46,18 @@ export function DistributionBarChart({ points }: { points: DistributionPoint[] }
     <div className="h-72 w-full">
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={points} margin={{ top: 8, right: 8, bottom: 8, left: 8 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
+          <CartesianGrid strokeDasharray="3 3" stroke={GRID_STROKE} vertical={false} />
           <XAxis
             dataKey="label"
-            tick={{ fontSize: 12, fill: "#64748b" }}
+            tick={{ fontSize: 12, fill: TICK_FILL }}
             tickFormatter={(value: string) => truncate(value, 14)}
             interval={0}
             angle={points.length > 6 ? -20 : 0}
             textAnchor={points.length > 6 ? "end" : "middle"}
             height={points.length > 6 ? 70 : 40}
           />
-          <YAxis allowDecimals={false} tick={{ fontSize: 12, fill: "#64748b" }} />
-          <Tooltip
+          <YAxis allowDecimals={false} tick={{ fontSize: 12, fill: TICK_FILL }} />
+          <Tooltip contentStyle={TOOLTIP_STYLE} labelStyle={{ color: "#f5f5f5" }} itemStyle={{ color: "#f5f5f5" }}
             formatter={(value, _name, entry) => {
               const point = entry?.payload as DistributionPoint | undefined;
               return [`${Number(value)} (${point?.percentage ?? 0}%)`, "Responses"];
@@ -81,7 +91,7 @@ export function DistributionDonutChart({ points }: { points: DistributionPoint[]
               <Cell key={point.label} fill={CHART_COLORS[index % CHART_COLORS.length]} />
             ))}
           </Pie>
-          <Tooltip
+          <Tooltip contentStyle={TOOLTIP_STYLE} labelStyle={{ color: "#f5f5f5" }} itemStyle={{ color: "#f5f5f5" }}
             formatter={(value, _name, entry) => {
               const point = entry?.payload as DistributionPoint | undefined;
               return [`${Number(value)} (${point?.percentage ?? 0}%)`, point?.label ?? "Responses"];
@@ -117,11 +127,11 @@ export function ScaleBarChart({
     <div className="h-64 w-full">
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={filled} margin={{ top: 8, right: 8, bottom: 8, left: 8 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
-          <XAxis dataKey="label" tick={{ fontSize: 12, fill: "#64748b" }} />
-          <YAxis allowDecimals={false} tick={{ fontSize: 12, fill: "#64748b" }} />
-          <Tooltip formatter={(value) => [Number(value), "Responses"]} />
-          <Bar dataKey="count" fill="#4f46e5" radius={[4, 4, 0, 0]} />
+          <CartesianGrid strokeDasharray="3 3" stroke={GRID_STROKE} vertical={false} />
+          <XAxis dataKey="label" tick={{ fontSize: 12, fill: TICK_FILL }} />
+          <YAxis allowDecimals={false} tick={{ fontSize: 12, fill: TICK_FILL }} />
+          <Tooltip contentStyle={TOOLTIP_STYLE} labelStyle={{ color: "#f5f5f5" }} itemStyle={{ color: "#f5f5f5" }} formatter={(value) => [Number(value), "Responses"]} />
+          <Bar dataKey="count" fill="#fe6e00" radius={[4, 4, 0, 0]} />
         </BarChart>
       </ResponsiveContainer>
     </div>
@@ -140,14 +150,14 @@ export function SubmissionsTimelineChart({ points }: { points: TimelinePoint[] }
     <div className="h-64 w-full">
       <ResponsiveContainer width="100%" height="100%">
         <LineChart data={points} margin={{ top: 8, right: 12, bottom: 8, left: 8 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
-          <XAxis dataKey="date" tick={{ fontSize: 12, fill: "#64748b" }} />
-          <YAxis allowDecimals={false} tick={{ fontSize: 12, fill: "#64748b" }} />
-          <Tooltip formatter={(value) => [Number(value), "Responses"]} />
+          <CartesianGrid strokeDasharray="3 3" stroke={GRID_STROKE} vertical={false} />
+          <XAxis dataKey="date" tick={{ fontSize: 12, fill: TICK_FILL }} />
+          <YAxis allowDecimals={false} tick={{ fontSize: 12, fill: TICK_FILL }} />
+          <Tooltip contentStyle={TOOLTIP_STYLE} labelStyle={{ color: "#f5f5f5" }} itemStyle={{ color: "#f5f5f5" }} formatter={(value) => [Number(value), "Responses"]} />
           <Line
             type="monotone"
             dataKey="count"
-            stroke="#4f46e5"
+            stroke="#fe6e00"
             strokeWidth={2}
             dot={{ r: 3 }}
             activeDot={{ r: 5 }}

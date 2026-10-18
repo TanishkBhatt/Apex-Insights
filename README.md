@@ -197,8 +197,10 @@ connection is reused across files. A setup hook warms the connection and the
 
 ### Deployment notes
 
-- **Fonts** — the app uses a self-contained system font stack (no build-time fetch to
-  `fonts.googleapis.com`), so builds succeed without outbound font access.
+- **Fonts** — Poppins is self-hosted via `next/font/local` (woff2 files in
+  `src/app/fonts/`), so builds succeed without any outbound font fetch.
+- **Theme** — dark charcoal + orange design system defined as Tailwind v4 tokens in
+  `src/app/globals.css` (base font size bumped to 106.25%).
 - **Rate limiting** — the public-form limiter is in-memory (per-instance). On
   serverless it's per-instance only; move to a shared store (e.g. Upstash Redis) if
   you need a global limit.
@@ -238,7 +240,7 @@ drizzle/                             SQL migrations
 
 - `cacheComponents` was removed from `next.config.ts`.
 - `pdf-lib` is used instead of `pdfkit` (smaller, serverless-safe, no native deps).
-- Google Fonts were replaced with a system font stack for offline/CI build
-  reliability.
+- Google Fonts were replaced with self-hosted Poppins (`next/font/local`) for
+  offline/CI build reliability.
 - One demo dataset per survey (`demo_datasets.surveyId` is unique); regenerating
   replaces it transactionally.

@@ -99,7 +99,7 @@ export default async function DashboardPage() {
                   <div className="flex items-center gap-2">
                     <Link
                       href={`/dashboard/surveys/${survey.id}/analytics`}
-                      className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                      className="rounded-lg border border-slate-300 bg-surface px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
                     >
                       Analytics
                     </Link>

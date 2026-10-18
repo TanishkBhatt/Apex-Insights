@@ -461,7 +461,7 @@ export function SurveyEditor({ survey }: { survey?: EditorSurvey }) {
         </span>
       </div>
 
-      <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white px-5 py-4">
+      <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-surface px-5 py-4">
         <Button type="submit" disabled={pending} size="lg">
           {pending ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : null}
           {pending ? "Saving…" : isEdit ? "Save changes" : "Create survey"}

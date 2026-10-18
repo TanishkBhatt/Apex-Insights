@@ -54,7 +54,7 @@ const features = [
 export default function HomePage() {
   return (
     <div className="flex min-h-screen flex-col">
-      <header className="border-b border-slate-200 bg-white/80 backdrop-blur">
+      <header className="border-b border-slate-200 bg-surface/80 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
           <Link href="/" className="flex items-center gap-2 text-slate-900">
             <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-600 text-white">
@@ -161,7 +161,7 @@ export default function HomePage() {
           </div>
         </section>
 
-        <section className="border-t border-slate-200 bg-white">
+        <section className="border-t border-slate-200 bg-surface">
           <div className="mx-auto max-w-6xl px-4 py-16">
             <h2 className="text-2xl font-semibold text-slate-900">Everything you need</h2>
             <p className="mt-2 max-w-2xl text-slate-600">
@@ -185,7 +185,7 @@ export default function HomePage() {
         </section>
       </main>
 
-      <footer className="border-t border-slate-200 bg-white">
+      <footer className="border-t border-slate-200 bg-surface">
         <div className="mx-auto max-w-6xl px-4 py-6 text-sm text-slate-500">
           Apex Insights — Survey Made Easy
         </div>
