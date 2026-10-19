@@ -123,7 +123,7 @@ export default async function AnalyticsPage({
           {summary.timeline.length > 0 ? (
             <Card>
               <CardHeader
-                title="Real submissions over time"
+                title="Submissions over time"
                 description="Grouped by calendar day."
               />
               <CardBody>
