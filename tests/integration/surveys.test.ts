@@ -193,6 +193,61 @@ describe("survey service", () => {
     await db.delete(surveys).where(eq(surveys.id, survey.id));
   });
 
+  it("allows adding a question when text answers are recorded", async () => {
+    const survey = await createSurvey(ownerId, {
+      title: "Name survey",
+      description: null,
+      questions: [
+        { type: "short_text", title: "Your name", required: true, config: {} },
+        { type: "paragraph", title: "Comments", required: false, config: {} },
+      ],
+    });
+    const loaded = await getSurveyForOwner(ownerId, survey.id);
+    const [nameQuestion, paragraphQuestion] = loaded!.questions;
+
+    const [response] = await db.insert(responses).values({ surveyId: survey.id }).returning();
+    await db.insert(answers).values([
+      { responseId: response.id, questionId: nameQuestion.id, value: "TANISHK" },
+      {
+        responseId: response.id,
+        questionId: paragraphQuestion.id,
+        value: "A long comment about the course.",
+      },
+    ]);
+
+    const updated = await updateSurvey(ownerId, survey.id, {
+      title: "Name survey",
+      description: null,
+      questions: [
+        {
+          id: nameQuestion.id,
+          type: nameQuestion.type,
+          title: nameQuestion.title,
+          required: true,
+          config: {},
+        },
+        {
+          id: paragraphQuestion.id,
+          type: paragraphQuestion.type,
+          title: paragraphQuestion.title,
+          required: false,
+          config: {},
+        },
+        { type: "yes_no", title: "Would you recommend us?", required: false, config: {} },
+      ],
+    });
+
+    expect(updated.title).toBe("Name survey");
+    const after = await getSurveyForOwner(ownerId, survey.id);
+    expect(after?.questions.map((q) => q.title)).toEqual([
+      "Your name",
+      "Comments",
+      "Would you recommend us?",
+    ]);
+
+    await db.delete(surveys).where(eq(surveys.id, survey.id));
+  });
+
   it("cascades deletion of surveys to questions and responses", async () => {
     const survey = await createSurvey(ownerId, baseInput);
     const loaded = await getSurveyForOwner(ownerId, survey.id);

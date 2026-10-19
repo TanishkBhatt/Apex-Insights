@@ -13,7 +13,11 @@ import {
   type SurveyStatus,
 } from "@/db/schema";
 import { canTransition, generateSlug } from "@/lib/surveys/lifecycle";
-import type { QuestionInput, SurveyWithQuestionsInput } from "@/lib/validation/survey";
+import {
+  isChoiceType,
+  type QuestionInput,
+  type SurveyWithQuestionsInput,
+} from "@/lib/validation/survey";
 
 export class SurveyServiceError extends Error {
   constructor(message: string) {
@@ -264,12 +268,17 @@ function assertConfigChangeAllowed(
     );
   }
 
-  const nextOptions = next.config.options ?? [];
-  for (const option of usedOptions) {
-    if (!nextOptions.includes(option)) {
-      throw new SurveyServiceError(
-        `Cannot remove the option "${option}" from "${existing.title}" because responses reference it.`,
-      );
+  // Only choice questions store options. For text, scale and yes/no questions the
+  // recorded answers are free-form values, so they must not be matched against an
+  // option list (that previously made any save fail once a text answer existed).
+  if (isChoiceType(existing.type)) {
+    const nextOptions = next.config.options ?? [];
+    for (const option of usedOptions) {
+      if (!nextOptions.includes(option)) {
+        throw new SurveyServiceError(
+          `Cannot remove the option "${option}" from "${existing.title}" because responses reference it.`,
+        );
+      }
     }
   }
 
