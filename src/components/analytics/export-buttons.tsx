@@ -1,15 +1,14 @@
-import { Download, FileJson, FileText, Table } from "lucide-react";
+import { Download, FileJson, Table } from "lucide-react";
 import type { AnalyticsSource } from "@/lib/analytics/load";
 import type { ComponentType, SVGProps } from "react";
 
 const FORMATS: Array<{
-  format: "csv" | "json" | "pdf";
+  format: "csv" | "json";
   label: string;
   icon: ComponentType<SVGProps<SVGSVGElement>>;
 }> = [
   { format: "csv", label: "CSV", icon: Table },
   { format: "json", label: "JSON", icon: FileJson },
-  { format: "pdf", label: "PDF", icon: FileText },
 ];
 
 export function ExportButtons({

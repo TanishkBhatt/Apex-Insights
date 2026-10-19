@@ -39,6 +39,8 @@ const input: SurveyWithQuestionsInput = {
       config: { min: 1, max: 5, minLabel: "Low", maxLabel: "High" },
     },
     { type: "yes_no", title: "Would recommend?", required: false, config: {} },
+    { type: "short_text", title: "What is your full name?", required: false, config: {} },
+    { type: "short_text", title: "Describe your day", required: false, config: {} },
   ],
 };
 
@@ -78,14 +80,16 @@ describe("synthetic generator", () => {
     expect(rows?.responses).toHaveLength(8);
 
     for (const response of rows!.responses) {
-      expect(response.answers).toHaveLength(4);
-      const [dropdown, paragraph, scale, yesNo] = response.answers;
+      expect(response.answers).toHaveLength(6);
+      const [dropdown, paragraph, scale, yesNo, nameText, otherText] = response.answers;
       expect(["Maths", "Science", "Art"]).toContain(dropdown.value);
-      expect(typeof paragraph.value).toBe("string");
+      expect(paragraph.value).toBe("");
       expect(typeof scale.value).toBe("number");
       expect(scale.value).toBeGreaterThanOrEqual(1);
       expect(scale.value).toBeLessThanOrEqual(5);
       expect(typeof yesNo.value).toBe("boolean");
+      expect(nameText.value).toMatch(/^[A-Z][a-z]+ [A-Z][a-z]+$/);
+      expect(otherText.value).toBe("");
     }
   });
 

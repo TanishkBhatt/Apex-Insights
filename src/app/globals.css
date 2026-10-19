@@ -1,67 +1,174 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 /*
- * Apex Insights theme — charcoal/grey dark surfaces with an orange primary,
- * inspired by the chaicode.com palette (#0a0a0a/#1a1a1a/#212121 greys and
- * #fe6e00 orange). Tokens are remapped here so component class names stay
- * semantic (e.g. `bg-slate-50`, `text-indigo-600`) while rendering on-theme.
+ * Apex Insights theme — orange primary with charcoal greys.
+ *
+ * Light palette follows the chaicode.com light tokens (white background,
+ * near-black foreground, #f7f7f7 muted surfaces, #e5e5e5 borders) plus the
+ * orange brand scale. The dark palette keeps the charcoal look (#0a0a0a page,
+ * #171717 surfaces, #fe6e00 orange).
+ *
+ * Palettes are defined as plain CSS variables per theme and exposed to
+ * Tailwind via `@theme inline`, so semantic class names (bg-slate-50,
+ * text-indigo-600, …) switch at runtime with the `.dark` class.
  */
-@theme {
+
+:root {
+  color-scheme: light;
+
+  --page-bg: #ffffff;
+  --page-fg: #262626;
+  --surface: #ffffff;
+
+  /* Neutral (slate) scale — chaicode light greys */
+  --slate-50: #f7f7f7;
+  --slate-100: #f0f0f0;
+  --slate-200: #e5e5e5;
+  --slate-300: #d4d4d4;
+  --slate-400: #a3a3a3;
+  --slate-500: #737373;
+  --slate-600: #525252;
+  --slate-700: #404040;
+  --slate-800: #2e2e2e;
+  --slate-900: #262626;
+
+  /* Primary (indigo) scale — orange brand */
+  --indigo-50: #fff7ed;
+  --indigo-100: #ffedd5;
+  --indigo-200: #fed7aa;
+  --indigo-300: #fdba74;
+  --indigo-400: #fb923c;
+  --indigo-500: #f97316;
+  --indigo-600: #ea580c;
+  --indigo-700: #c2410c;
+
+  /* Feedback tones */
+  --emerald-50: #ecfdf5;
+  --emerald-200: #a7f3d0;
+  --emerald-600: #059669;
+  --emerald-700: #047857;
+
+  --amber-50: #fffbeb;
+  --amber-200: #fde68a;
+  --amber-700: #b45309;
+  --amber-800: #92400e;
+
+  --red-50: #fef2f2;
+  --red-200: #fecaca;
+  --red-300: #fca5a5;
+  --red-600: #dc2626;
+  --red-700: #b91c1c;
+
+  --violet-50: #f5f3ff;
+  --violet-200: #ddd6fe;
+  --violet-700: #6d28d9;
+}
+
+.dark {
+  color-scheme: dark;
+
+  --page-bg: #0a0a0a;
+  --page-fg: #f5f5f5;
+  --surface: #171717;
+
+  /* Neutral (slate) scale — dark charcoal greys */
+  --slate-50: #1e1e1e;
+  --slate-100: #252525;
+  --slate-200: #2a2a2a;
+  --slate-300: #3a3a3a;
+  --slate-400: #6f6f6f;
+  --slate-500: #9c9c9c;
+  --slate-600: #b5b5b5;
+  --slate-700: #d4d4d4;
+  --slate-800: #e5e5e5;
+  --slate-900: #f5f5f5;
+
+  /* Primary (indigo) scale — chaicode orange */
+  --indigo-50: #2a1a0d;
+  --indigo-100: #3a2410;
+  --indigo-200: #8a4b17;
+  --indigo-300: #6b3a12;
+  --indigo-400: #ff9a3d;
+  --indigo-500: #fe6e00;
+  --indigo-600: #fe6e00;
+  --indigo-700: #ff7d0c;
+
+  /* Feedback tones tuned for dark surfaces */
+  --emerald-50: #0e2117;
+  --emerald-200: #1f5a3a;
+  --emerald-600: #34d399;
+  --emerald-700: #6ee7b7;
+
+  --amber-50: #291c0a;
+  --amber-200: #6b4a10;
+  --amber-700: #fbbf24;
+  --amber-800: #fcd34d;
+
+  --red-50: #2a1216;
+  --red-200: #7f2a30;
+  --red-300: #5a2a2e;
+  --red-600: #e5484d;
+  --red-700: #f87171;
+
+  --violet-50: #211430;
+  --violet-200: #5b3a8a;
+  --violet-700: #c4b5fd;
+}
+
+@theme inline {
   --font-sans: var(--font-poppins), ui-sans-serif, system-ui, -apple-system,
     "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
     "Liberation Mono", "Courier New", monospace;
 
-  /* Cards, inputs and other raised surfaces */
-  --color-surface: #171717;
+  --color-surface: var(--surface);
 
-  /* Neutral (slate) scale remapped to dark charcoal greys */
-  --color-slate-50: #1e1e1e;
-  --color-slate-100: #252525;
-  --color-slate-200: #2a2a2a;
-  --color-slate-300: #3a3a3a;
-  --color-slate-400: #6f6f6f;
-  --color-slate-500: #9c9c9c;
-  --color-slate-600: #b5b5b5;
-  --color-slate-700: #d4d4d4;
-  --color-slate-800: #e5e5e5;
-  --color-slate-900: #f5f5f5;
+  --color-slate-50: var(--slate-50);
+  --color-slate-100: var(--slate-100);
+  --color-slate-200: var(--slate-200);
+  --color-slate-300: var(--slate-300);
+  --color-slate-400: var(--slate-400);
+  --color-slate-500: var(--slate-500);
+  --color-slate-600: var(--slate-600);
+  --color-slate-700: var(--slate-700);
+  --color-slate-800: var(--slate-800);
+  --color-slate-900: var(--slate-900);
 
-  /* Primary (indigo) scale remapped to the chaicode orange */
-  --color-indigo-50: #2a1a0d;
-  --color-indigo-100: #3a2410;
-  --color-indigo-200: #8a4b17;
-  --color-indigo-300: #6b3a12;
-  --color-indigo-400: #ff9a3d;
-  --color-indigo-500: #fe6e00;
-  --color-indigo-600: #fe6e00;
-  --color-indigo-700: #ff7d0c;
+  --color-indigo-50: var(--indigo-50);
+  --color-indigo-100: var(--indigo-100);
+  --color-indigo-200: var(--indigo-200);
+  --color-indigo-300: var(--indigo-300);
+  --color-indigo-400: var(--indigo-400);
+  --color-indigo-500: var(--indigo-500);
+  --color-indigo-600: var(--indigo-600);
+  --color-indigo-700: var(--indigo-700);
 
-  /* Feedback tones tuned for dark surfaces */
-  --color-emerald-50: #0e2117;
-  --color-emerald-200: #1f5a3a;
-  --color-emerald-600: #34d399;
-  --color-emerald-700: #6ee7b7;
+  --color-emerald-50: var(--emerald-50);
+  --color-emerald-200: var(--emerald-200);
+  --color-emerald-600: var(--emerald-600);
+  --color-emerald-700: var(--emerald-700);
 
-  --color-amber-50: #291c0a;
-  --color-amber-200: #6b4a10;
-  --color-amber-700: #fbbf24;
-  --color-amber-800: #fcd34d;
+  --color-amber-50: var(--amber-50);
+  --color-amber-200: var(--amber-200);
+  --color-amber-700: var(--amber-700);
+  --color-amber-800: var(--amber-800);
 
-  --color-red-50: #2a1216;
-  --color-red-200: #7f2a30;
-  --color-red-300: #5a2a2e;
-  --color-red-600: #e5484d;
-  --color-red-700: #f87171;
+  --color-red-50: var(--red-50);
+  --color-red-200: var(--red-200);
+  --color-red-300: var(--red-300);
+  --color-red-600: var(--red-600);
+  --color-red-700: var(--red-700);
 
-  --color-violet-50: #211430;
-  --color-violet-200: #5b3a8a;
-  --color-violet-700: #c4b5fd;
+  --color-violet-50: var(--violet-50);
+  --color-violet-200: var(--violet-200);
+  --color-violet-700: var(--violet-700);
 }
 
 html {
-  /* Slightly larger base size so Poppins reads comfortably. */
-  font-size: 106.25%;
+  /* Slightly larger base size so Poppins reads comfortably (16.5px). */
+  font-size: 103.125%;
 }
 
 html,
@@ -70,8 +177,8 @@ body {
 }
 
 body {
-  background-color: #0a0a0a;
-  color: #f5f5f5;
+  background-color: var(--page-bg);
+  color: var(--page-fg);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
 }
@@ -82,4 +189,49 @@ body {
 
 ::selection {
   background-color: rgb(254 110 0 / 35%);
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes float-y {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes blob-drift {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(24px, -28px) scale(1.1);
+  }
+}
+
+@layer utilities {
+  .animate-fade-up {
+    animation: fade-up 0.6s ease-out both;
+  }
+
+  .animate-float {
+    animation: float-y 7s ease-in-out infinite;
+  }
+
+  .animate-blob {
+    animation: blob-drift 16s ease-in-out infinite;
+  }
 }

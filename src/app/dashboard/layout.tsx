@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { BarChart3, LayoutDashboard, Plus } from "lucide-react";
 import { SignOutButton } from "@/components/sign-out-button";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
 import { requireUser } from "@/lib/session";
 
@@ -44,6 +45,7 @@ export default async function DashboardLayout({
               <p className="text-xs font-medium text-slate-700">{user.name}</p>
               <p className="text-xs text-slate-500">{user.email}</p>
             </div>
+            <ThemeToggle />
             <SignOutButton />
           </div>
         </div>

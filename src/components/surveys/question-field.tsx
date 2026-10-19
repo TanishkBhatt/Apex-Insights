@@ -182,12 +182,10 @@ export function QuestionField({
               </label>
             ))}
           </div>
-          {config.minLabel || config.maxLabel ? (
-            <div className="flex justify-between text-xs text-slate-500" id={describedBy}>
-              <span>{config.minLabel ?? min}</span>
-              <span>{config.maxLabel ?? max}</span>
-            </div>
-          ) : null}
+          <div className="flex justify-between text-xs text-slate-500" id={describedBy}>
+            <span>{config.minLabel ? `${config.minLabel} (${min})` : `Lowest (${min})`}</span>
+            <span>{config.maxLabel ? `${config.maxLabel} (${max})` : `Highest (${max})`}</span>
+          </div>
         </div>
       );
     }

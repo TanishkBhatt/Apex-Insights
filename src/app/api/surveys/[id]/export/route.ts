@@ -1,10 +1,13 @@
 import { NextResponse } from "next/server";
 import { loadAnalytics, type AnalyticsSource } from "@/lib/analytics/load";
 import { getSessionUser } from "@/lib/session";
-import { buildResponsesCsv, buildResponsesJson } from "@/lib/exports/formatters";
-import { buildResponsesPdf, contentDispositionFilename } from "@/lib/exports/pdf";
+import {
+  buildResponsesCsv,
+  buildResponsesJson,
+  contentDispositionFilename,
+} from "@/lib/exports/formatters";
 
-const VALID_FORMATS = ["csv", "json", "pdf"] as const;
+const VALID_FORMATS = ["csv", "json"] as const;
 const VALID_SOURCES: AnalyticsSource[] = ["real", "demo", "both"];
 const UUID_RE = /^[0-9a-f-]{36}$/i;
 
@@ -33,7 +36,7 @@ export async function GET(
     : null;
   if (!format) {
     return NextResponse.json(
-      { error: "Unsupported format. Use csv, json, or pdf." },
+      { error: "Unsupported format. Use csv or json." },
       { status: 400 },
     );
   }
@@ -71,20 +74,4 @@ export async function GET(
       },
     });
   }
-
-  const generatedAt = new Date();
-  const bytes = await buildResponsesPdf({
-    survey: data.survey,
-    questions: data.questions,
-    rows: data.rows,
-    source,
-    generatedAt,
-  });
-  return new Response(bytes as BodyInit, {
-    headers: {
-      "Content-Type": "application/pdf",
-      "Content-Disposition": disposition,
-      "Cache-Control": "no-store",
-    },
-  });
 }

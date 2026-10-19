@@ -3,10 +3,9 @@ import type { Question } from "@/db/schema";
 import {
   buildResponsesCsv,
   buildResponsesJson,
+  contentDispositionFilename,
   formatAnswerValue,
-  toPdfSafeText,
 } from "@/lib/exports/formatters";
-import { buildResponsesPdf, contentDispositionFilename } from "@/lib/exports/pdf";
 import type { AnalyticsRow } from "@/lib/analytics/compute";
 
 function question(partial: Partial<Question> & { id: string; title: string; type: string }): Question {
@@ -90,61 +89,11 @@ describe("buildResponsesJson", () => {
   });
 });
 
-describe("toPdfSafeText", () => {
-  it("replaces typographic punctuation and strips unsupported characters", () => {
-    expect(toPdfSafeText("It\u2019s \u201Cquoted\u201D \u2014 yes\u2026")).toBe(
-      'It\'s "quoted" - yes...',
-    );
-    expect(toPdfSafeText("emoji \u{1F600} here")).toBe("emoji  here");
-  });
-});
-
-describe("buildResponsesPdf", () => {
-  it("produces a valid, non-empty PDF for a survey with responses", async () => {
-    const questions = [
-      question({ id: "q1", title: "Favourite subject?", type: "dropdown" }),
-      question({ id: "q2", title: "Comments?", type: "paragraph" }),
-    ];
-    const rows: AnalyticsRow[] = [
-      {
-        submittedAt: new Date("2026-03-01T09:00:00Z"),
-        answers: [
-          { questionId: "q1", type: "dropdown", value: "Maths" },
-          { questionId: "q2", type: "paragraph", value: "Great course \u2014 thanks!" },
-        ],
-      },
-    ];
-
-    const bytes = await buildResponsesPdf({
-      survey: { id: "survey-1", title: "PDF test", description: null, status: "published" },
-      questions,
-      rows,
-      source: "real",
-      generatedAt: new Date("2026-03-02T00:00:00Z"),
-    });
-
-    expect(bytes.length).toBeGreaterThan(500);
-    const header = Buffer.from(bytes.subarray(0, 5)).toString("latin1");
-    expect(header).toBe("%PDF-");
-  });
-
-  it("handles an empty response set without throwing", async () => {
-    const bytes = await buildResponsesPdf({
-      survey: { id: "survey-1", title: "Empty", description: null, status: "draft" },
-      questions: [question({ id: "q1", title: "Anything?", type: "short_text" })],
-      rows: [],
-      source: "demo",
-      generatedAt: new Date(),
-    });
-    expect(Buffer.from(bytes.subarray(0, 5)).toString("latin1")).toBe("%PDF-");
-  });
-});
-
 describe("contentDispositionFilename", () => {
   it("slugifies the title and appends source and extension", () => {
     expect(contentDispositionFilename("Customer Satisfaction 2026!", "real", "csv")).toBe(
       "customer-satisfaction-2026-real.csv",
     );
-    expect(contentDispositionFilename("   ", "demo", "pdf")).toBe("survey-demo.pdf");
+    expect(contentDispositionFilename("   ", "demo", "json")).toBe("survey-demo.json");
   });
 });

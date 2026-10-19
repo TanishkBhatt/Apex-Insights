@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
+import { cn } from "@/lib/utils";
 import "./globals.css";
 
 const poppins = localFont({
@@ -23,13 +24,18 @@ export const metadata: Metadata = {
     "Create surveys, collect responses, and preview analytics with built-in synthetic demo data. Built for students, school projects, research and surveys.",
 };
 
+const themeScript = `(function(){try{var t=localStorage.getItem("theme");if(t==="light"){document.documentElement.classList.remove("dark");}}catch(e){}})();`;
+
 export default function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={poppins.variable}>
+    <html lang="en" className={cn("dark", poppins.variable)} suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+      </head>
       <body className="min-h-full antialiased">{children}</body>
     </html>
   );

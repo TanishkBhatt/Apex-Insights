@@ -2,7 +2,7 @@ import { eq, and, count, inArray } from "drizzle-orm";
 import { db } from "@/db";
 import { demoDatasets, demoResponses, demoAnswers, questions, surveys } from "@/db/schema";
 import type { Question, QuestionConfig } from "@/db/schema";
-import { createPrng, pick, pickMultiple, randomInt, sentence } from "./prng";
+import { createPrng, pick, pickMultiple, randomInt } from "./prng";
 import { SurveyServiceError } from "@/lib/surveys/service";
 import { LIMITS } from "@/lib/validation/survey";
 
@@ -18,36 +18,78 @@ type GeneratedAnswer = {
   value: string | number | boolean | string[];
 };
 
-const TEXT_WORDS = [
-  "focus",
-  "support",
-  "clarity",
-  "balance",
-  "flexibility",
-  "engagement",
-  "pace",
-  "feedback",
-  "resources",
-  "interaction",
-  "structure",
-  "motivation",
-  "relevance",
-  "quality",
-  "guidance",
+const FIRST_NAMES = [
+  "James",
+  "Mary",
+  "John",
+  "Patricia",
+  "Robert",
+  "Jennifer",
+  "Michael",
+  "Linda",
+  "William",
+  "Elizabeth",
+  "David",
+  "Susan",
+  "Richard",
+  "Jessica",
+  "Joseph",
+  "Sarah",
+  "Thomas",
+  "Emily",
+  "Daniel",
+  "Emma",
+  "Matthew",
+  "Olivia",
+  "Andrew",
+  "Sophie",
+  "George",
+  "Alice",
+  "Henry",
+  "Lucy",
 ];
+
+const LAST_NAMES = [
+  "Smith",
+  "Johnson",
+  "Williams",
+  "Brown",
+  "Jones",
+  "Miller",
+  "Davis",
+  "Wilson",
+  "Taylor",
+  "Clark",
+  "Hall",
+  "Wright",
+  "Turner",
+  "Baker",
+  "Adams",
+  "Green",
+];
+
+const NAME_QUESTION_PATTERN = /\bname\b/i;
+
+/** Demo text answers: only "name" questions get a common English name; other
+ *  short-text and paragraph questions stay blank on purpose. */
+function generateTextAnswer(
+  rand: () => number,
+  question: Question,
+): string {
+  if (question.type === "short_text" && NAME_QUESTION_PATTERN.test(question.title)) {
+    return `${pick(rand, FIRST_NAMES)} ${pick(rand, LAST_NAMES)}`;
+  }
+  return "";
+}
 
 function generateAnswerForQuestion(rand: () => number, question: Question): GeneratedAnswer {
   const config = question.config as QuestionConfig;
   switch (question.type) {
     case "short_text":
-      return {
-        questionId: question.id,
-        value: sentence(rand, TEXT_WORDS, 5),
-      };
     case "paragraph":
       return {
         questionId: question.id,
-        value: Array.from({ length: randomInt(rand, 2, 4) }, () => sentence(rand, TEXT_WORDS, 6)).join(" "),
+        value: generateTextAnswer(rand, question),
       };
     case "single_choice":
     case "dropdown": {

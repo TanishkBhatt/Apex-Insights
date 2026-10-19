@@ -1,5 +1,5 @@
 import type { Question } from "@/db/schema";
-import type { AnalyticsAnswerValue, AnalyticsRow, QuestionStats } from "@/lib/analytics/compute";
+import type { AnalyticsAnswerValue, AnalyticsRow } from "@/lib/analytics/compute";
 
 export function formatAnswerValue(type: string, value: AnalyticsAnswerValue): string {
   if (value === null || value === undefined) return "";
@@ -102,36 +102,16 @@ export function buildResponsesJson(
   };
 }
 
-/** pdf-lib's standard fonts are WinAnsi-only; replace characters they cannot encode. */
-export function toPdfSafeText(input: string): string {
-  return input
-    .replace(/[\u2018\u2019]/g, "'")
-    .replace(/[\u201C\u201D]/g, '"')
-    .replace(/[\u2013\u2014]/g, "-")
-    .replace(/\u2026/g, "...")
-    .replace(/[^\x09\x0A\x0D\x20-\xFF]/g, "");
-}
-
-export function summarizeStatsForPdf(
-  stats: QuestionStats,
-): string[] {
-  switch (stats.kind) {
-    case "choice":
-    case "boolean":
-      return stats.points.map((point) => `${point.label}: ${point.count} (${point.percentage}%)`);
-    case "scale":
-      return [
-        `Mean: ${stats.mean ?? "n/a"} · Median: ${stats.median ?? "n/a"} · Range: ${stats.min ?? "n/a"}-${stats.max ?? "n/a"}`,
-        ...stats.points.map((point) => `${point.label}: ${point.count} (${point.percentage}%)`),
-      ];
-    case "text":
-      return [
-        `Answered: ${stats.answered} · Skipped: ${stats.unanswered}`,
-        stats.topWords.length
-          ? `Top words: ${stats.topWords.map((w) => `${w.word} (${w.count})`).join(", ")}`
-          : "Not enough text to analyse.",
-      ];
-    default:
-      return [];
-  }
+/** Build a safe download filename from the survey title, data source and extension. */
+export function contentDispositionFilename(
+  title: string,
+  source: string,
+  extension: string,
+): string {
+  const slug = title
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 60);
+  return `${slug || "survey"}-${source}.${extension}`;
 }

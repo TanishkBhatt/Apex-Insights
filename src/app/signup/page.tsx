@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { BarChart3 } from "lucide-react";
 import { AuthForm } from "@/components/auth-form";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { Card, CardBody } from "@/components/ui/card";
 import { getSessionUser } from "@/lib/session";
 
@@ -11,7 +12,10 @@ export default async function SignupPage() {
   if (await getSessionUser()) redirect("/dashboard");
 
   return (
-    <main className="flex min-h-screen items-center justify-center px-4 py-12">
+    <main className="relative flex min-h-screen items-center justify-center px-4 py-12">
+      <div className="absolute top-4 right-4">
+        <ThemeToggle />
+      </div>
       <div className="w-full max-w-md">
         <div className="mb-6 flex flex-col items-center text-center">
           <Link href="/" className="flex items-center gap-2 text-slate-900">

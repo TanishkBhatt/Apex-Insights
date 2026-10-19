@@ -86,8 +86,107 @@ export function SurveyEditor({ survey }: { survey?: EditorSurvey }) {
   );
   const [pending, setPending] = useState(false);
   const [result, setResult] = useState<ActionState | null>(null);
+  const [errors, setErrors] = useState<Record<string, string[] | undefined>>({});
 
   const readOnlyStructure = useMemo(() => survey?.status !== "draft", [survey?.status]);
+
+  function errorFor(path: string): string | undefined {
+    return errors[path]?.[0];
+  }
+
+  function questionHasError(index: number): boolean {
+    const prefix = `questions.${index}.`;
+    return Object.keys(errors).some(
+      (key) => key === `questions.${index}` || key.startsWith(prefix),
+    );
+  }
+
+  function scrollToFirstError(issues: Record<string, string[] | undefined>) {
+    const first = Object.keys(issues)[0];
+    if (!first) return;
+    let targetId: string | null = null;
+    if (first === "title") targetId = "survey-title";
+    else if (first === "description") targetId = "survey-description";
+    else if (first === "questions") targetId = "questions-list";
+    else {
+      const match = /^questions\.(\d+)/.exec(first);
+      if (match) targetId = `question-card-${match[1]}`;
+    }
+    if (!targetId) return;
+    requestAnimationFrame(() => {
+      const element = document.getElementById(targetId);
+      if (!element) return;
+      element.scrollIntoView({ behavior: "smooth", block: "center" });
+      element
+        .querySelector<HTMLElement>("input, select, textarea")
+        ?.focus({ preventScroll: true });
+    });
+  }
+
+  function validateClient(
+    currentTitle: string,
+    currentQuestions: EditorQuestion[],
+  ): Record<string, string[]> {
+    const issues: Record<string, string[]> = {};
+    const add = (path: string, message: string) => {
+      issues[path] = [...(issues[path] ?? []), message];
+    };
+
+    if (!currentTitle.trim()) add("title", "A survey title is required.");
+    if (currentQuestions.length === 0) add("questions", "Add at least one question.");
+
+    currentQuestions.forEach((question, index) => {
+      if (!question.title.trim()) {
+        add(`questions.${index}.title`, "Question text is required.");
+      }
+
+      if (["single_choice", "multiple_choice", "dropdown"].includes(question.type)) {
+        const options = question.options.map((option) => option.trim());
+        if (options.filter(Boolean).length < LIMITS.optionsMin) {
+          add(
+            `questions.${index}.config.options`,
+            `Add at least ${LIMITS.optionsMin} options.`,
+          );
+        }
+        const seen = new Set<string>();
+        options.forEach((option, optionIndex) => {
+          if (!option) return;
+          const key = option.toLowerCase();
+          if (seen.has(key)) {
+            add(`questions.${index}.config.options.${optionIndex}`, "Options must be unique.");
+          }
+          seen.add(key);
+        });
+      }
+
+      if (question.type === "linear_scale") {
+        if (question.min < LIMITS.scaleMinMin || question.min > LIMITS.scaleMinMax) {
+          add(
+            `questions.${index}.config.min`,
+            `Minimum must be between ${LIMITS.scaleMinMin} and ${LIMITS.scaleMinMax}.`,
+          );
+        }
+        if (question.max < LIMITS.scaleMaxMin || question.max > LIMITS.scaleMaxMax) {
+          add(
+            `questions.${index}.config.max`,
+            `Maximum must be between ${LIMITS.scaleMaxMin} and ${LIMITS.scaleMaxMax}.`,
+          );
+        }
+        if (Number.isFinite(question.min) && Number.isFinite(question.max)) {
+          if (question.max <= question.min) {
+            add(`questions.${index}.config.max`, "Maximum must be greater than minimum.");
+          } else if (question.max - question.min > LIMITS.scaleSpanMax) {
+            add(
+              `questions.${index}.config.max`,
+              `The scale can span at most ${LIMITS.scaleSpanMax} steps.`,
+            );
+          }
+        }
+      }
+    });
+
+    return issues;
+  }
 
   function updateQuestion(index: number, patch: Partial<EditorQuestion>) {
     setQuestions((prev) =>
@@ -153,34 +252,18 @@ export function SurveyEditor({ survey }: { survey?: EditorSurvey }) {
     event.preventDefault();
     setResult(null);
 
-    if (!title.trim()) {
-      setResult({ ok: false, error: "A survey title is required." });
-      return;
-    }
-    if (questions.length === 0) {
-      setResult({ ok: false, error: "Add at least one question." });
-      return;
-    }
-    const blankQuestion = questions.findIndex((question) => !question.title.trim());
-    if (blankQuestion !== -1) {
+    const clientIssues = validateClient(title, questions);
+    if (Object.keys(clientIssues).length > 0) {
+      setErrors(clientIssues);
       setResult({
         ok: false,
-        error: `Question ${blankQuestion + 1} needs a question text.`,
+        error: "Please fix the highlighted fields.",
+        fieldErrors: clientIssues,
       });
+      scrollToFirstError(clientIssues);
       return;
     }
-    const blankChoice = questions.findIndex(
-      (question) =>
-        ["single_choice", "multiple_choice", "dropdown"].includes(question.type) &&
-        question.options.map((o) => o.trim()).filter(Boolean).length < LIMITS.optionsMin,
-    );
-    if (blankChoice !== -1) {
-      setResult({
-        ok: false,
-        error: `Question ${blankChoice + 1} needs at least ${LIMITS.optionsMin} options.`,
-      });
-      return;
-    }
+    setErrors({});
 
     setPending(true);
     try {
@@ -195,6 +278,10 @@ export function SurveyEditor({ survey }: { survey?: EditorSurvey }) {
         router.push(`/dashboard/surveys/${response.surveyId}/edit`);
       } else if (response.ok) {
         router.refresh();
+      } else {
+        const serverIssues = response.fieldErrors ?? {};
+        setErrors(serverIssues);
+        scrollToFirstError(serverIssues);
       }
     } catch {
       setResult({ ok: false, error: "Something went wrong. Please try again." });
@@ -209,7 +296,28 @@ export function SurveyEditor({ survey }: { survey?: EditorSurvey }) {
     <form onSubmit={onSubmit} className="space-y-6" noValidate>
       {result ? (
         <Alert tone={result.ok ? "success" : "error"}>
-          {result.ok ? (result.message ?? "Saved.") : result.error}
+          {result.ok ? (
+            result.message ?? "Saved."
+          ) : (
+            <div>
+              <p>{result.error}</p>
+              {result.fieldErrors && Object.keys(result.fieldErrors).length > 0 ? (
+                <ul className="mt-2 list-disc space-y-0.5 pl-5 text-xs">
+                  {Array.from(
+                    new Set(
+                      Object.values(result.fieldErrors)
+                        .flat()
+                        .filter((message): message is string => Boolean(message)),
+                    ),
+                  )
+                    .slice(0, 5)
+                    .map((message) => (
+                      <li key={message}>{message}</li>
+                    ))}
+                </ul>
+              ) : null}
+            </div>
+          )}
         </Alert>
       ) : null}
 
@@ -237,6 +345,7 @@ export function SurveyEditor({ survey }: { survey?: EditorSurvey }) {
               maxLength={LIMITS.surveyTitleMax}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Student wellbeing survey"
+              aria-invalid={fieldErrors?.title ? true : undefined}
               required
             />
           </Field>
@@ -251,14 +360,21 @@ export function SurveyEditor({ survey }: { survey?: EditorSurvey }) {
               maxLength={LIMITS.surveyDescriptionMax}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="A short introduction shown above the questions."
+              aria-invalid={fieldErrors?.description ? true : undefined}
             />
           </Field>
         </CardBody>
       </Card>
 
-      <div className="space-y-4">
+      <div className="space-y-4" id="questions-list">
         {questions.map((question, index) => (
-          <Card key={question.id ?? `new-${index}`}>
+          <Card
+            key={question.id ?? `new-${index}`}
+            id={`question-card-${index}`}
+            className={cn(
+              questionHasError(index) && "border-red-500/70 ring-1 ring-red-500/40",
+            )}
+          >
             <CardHeader
               title={`Question ${index + 1}`}
               description={question.id ? "Saved question" : "Not saved yet"}
@@ -306,6 +422,7 @@ export function SurveyEditor({ survey }: { survey?: EditorSurvey }) {
                     maxLength={LIMITS.questionTitleMax}
                     onChange={(e) => updateQuestion(index, { title: e.target.value })}
                     placeholder="How satisfied are you with the canteen?"
+                    aria-invalid={errorFor(`questions.${index}.title`) ? true : undefined}
                     required
                   />
                 </Field>
@@ -328,23 +445,37 @@ export function SurveyEditor({ survey }: { survey?: EditorSurvey }) {
                 <div className="space-y-2">
                   <p className="text-sm font-medium text-slate-700">Options</p>
                   {question.options.map((option, optionIndex) => (
-                    <div key={optionIndex} className="flex items-center gap-2">
-                      <Input
-                        value={option}
-                        maxLength={LIMITS.optionLengthMax}
-                        aria-label={`Option ${optionIndex + 1}`}
-                        onChange={(e) => updateOption(index, optionIndex, e.target.value)}
-                        placeholder={`Option ${optionIndex + 1}`}
-                      />
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => removeOption(index, optionIndex)}
-                        disabled={question.options.length <= LIMITS.optionsMin}
-                        aria-label={`Remove option ${optionIndex + 1}`}
-                      >
-                        <Trash2 className="h-4 w-4 text-slate-500" aria-hidden />
-                      </Button>
+                    <div key={optionIndex} className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <Input
+                          id={`option-${index}-${optionIndex}`}
+                          value={option}
+                          maxLength={LIMITS.optionLengthMax}
+                          aria-label={`Option ${optionIndex + 1}`}
+                          aria-invalid={
+                            errorFor(`questions.${index}.config.options.${optionIndex}`) ||
+                            errorFor(`questions.${index}.config.options`)
+                              ? true
+                              : undefined
+                          }
+                          onChange={(e) => updateOption(index, optionIndex, e.target.value)}
+                          placeholder={`Option ${optionIndex + 1}`}
+                        />
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeOption(index, optionIndex)}
+                          disabled={question.options.length <= LIMITS.optionsMin}
+                          aria-label={`Remove option ${optionIndex + 1}`}
+                        >
+                          <Trash2 className="h-4 w-4 text-slate-500" aria-hidden />
+                        </Button>
+                      </div>
+                      {errorFor(`questions.${index}.config.options.${optionIndex}`) ? (
+                        <p className="text-xs font-medium text-red-600" role="alert">
+                          {errorFor(`questions.${index}.config.options.${optionIndex}`)}
+                        </p>
+                      ) : null}
                     </div>
                   ))}
                   <Button
@@ -356,9 +487,9 @@ export function SurveyEditor({ survey }: { survey?: EditorSurvey }) {
                     <Plus className="h-4 w-4" aria-hidden />
                     Add option
                   </Button>
-                  {fieldErrors?.[`questions.${index}.config.options`]?.[0] ? (
-                    <p className="text-xs font-medium text-red-600">
-                      {fieldErrors[`questions.${index}.config.options`]?.[0]}
+                  {errorFor(`questions.${index}.config.options`) ? (
+                    <p className="text-xs font-medium text-red-600" role="alert">
+                      {errorFor(`questions.${index}.config.options`)}
                     </p>
                   ) : null}
                 </div>
@@ -366,23 +497,35 @@ export function SurveyEditor({ survey }: { survey?: EditorSurvey }) {
 
               {question.type === "linear_scale" ? (
                 <div className="grid gap-4 sm:grid-cols-4">
-                  <Field label="Min" htmlFor={`min-${index}`}>
+                  <Field
+                    label="Min"
+                    htmlFor={`min-${index}`}
+                    hint={`Allowed: ${LIMITS.scaleMinMin}–${LIMITS.scaleMinMax}`}
+                    error={errorFor(`questions.${index}.config.min`)}
+                  >
                     <Input
                       id={`min-${index}`}
                       type="number"
                       min={LIMITS.scaleMinMin}
                       max={LIMITS.scaleMinMax}
                       value={question.min}
+                      aria-invalid={errorFor(`questions.${index}.config.min`) ? true : undefined}
                       onChange={(e) => updateQuestion(index, { min: Number(e.target.value) })}
                     />
                   </Field>
-                  <Field label="Max" htmlFor={`max-${index}`}>
+                  <Field
+                    label="Max"
+                    htmlFor={`max-${index}`}
+                    hint={`Allowed: ${LIMITS.scaleMaxMin}–${LIMITS.scaleMaxMax} (max ${LIMITS.scaleSpanMax} steps above min)`}
+                    error={errorFor(`questions.${index}.config.max`)}
+                  >
                     <Input
                       id={`max-${index}`}
                       type="number"
                       min={LIMITS.scaleMaxMin}
                       max={LIMITS.scaleMaxMax}
                       value={question.max}
+                      aria-invalid={errorFor(`questions.${index}.config.max`) ? true : undefined}
                       onChange={(e) => updateQuestion(index, { max: Number(e.target.value) })}
                     />
                   </Field>

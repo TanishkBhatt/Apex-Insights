@@ -2,10 +2,10 @@
 
 A full-stack survey application: create surveys, collect real responses through a
 public link, explore analytics, preview synthetic demo data, and export results to
-CSV, JSON, and PDF.
+CSV or JSON.
 
 Built with Next.js (App Router), TypeScript, Drizzle ORM + Neon Postgres, Better
-Auth, Zod, Recharts, and pdf-lib.
+Auth, Zod, and Recharts.
 
 ## Features
 
@@ -21,8 +21,11 @@ Auth, Zod, Recharts, and pdf-lib.
   yes/no splits), response timeline, and a real/demo/both source toggle.
 - **Demo data** — a deterministic, seeded generator produces synthetic responses
   stored in a **separate dataset** so they never contaminate real counts, analytics,
-  or exports unless you explicitly include them.
-- **Exports** — CSV, JSON, and PDF downloads for any data source.
+  or exports unless you explicitly include them. Text placeholders stay blank except
+  short-text questions that ask for a name, which get a common English name.
+- **Exports** — CSV and JSON downloads for any data source.
+- **Theming** — light and dark themes (chaicode-style orange + charcoal palette) with
+  a header toggle, persisted in `localStorage`.
 
 ## Tech stack
 
@@ -34,7 +37,6 @@ Auth, Zod, Recharts, and pdf-lib.
 | Auth           | Better Auth                              |
 | Validation     | Zod                                      |
 | Charts         | Recharts                                 |
-| PDFs           | pdf-lib                                  |
 | Styling        | Tailwind CSS v4                          |
 | Tests          | Vitest                                   |
 
@@ -134,8 +136,8 @@ makes analytics and exports demoable and testable without exposing real response
 - `src/lib/analytics/compute.ts` — pure functions computing per-question stats and a
   submission timeline (unit-tested).
 - `src/lib/analytics/load.ts` — loads rows for a given source, owner-scoped.
-- `src/lib/exports/` — CSV, JSON, and pdf-lib PDF builders (unit-tested).
-- `GET /api/surveys/[id]/export?format=csv|json|pdf&source=real|demo|both` —
+- `src/lib/exports/` — CSV and JSON builders plus download filenames (unit-tested).
+- `GET /api/surveys/[id]/export?format=csv|json&source=real|demo|both` —
   authenticated, owner-scoped download.
 
 ## Testing
@@ -145,7 +147,7 @@ npm test
 ```
 
 - `tests/unit/*` — pure logic (validation, lifecycle transitions, PRNG, analytics
-  stats, export formatting/PDF). No database required beyond env presence.
+  stats, export formatting). No database required beyond env presence.
 - `tests/integration/*` — run against the database in `DATABASE_URL`. **Use a
   development database only; never point tests at production.**
 
@@ -199,8 +201,9 @@ connection is reused across files. A setup hook warms the connection and the
 
 - **Fonts** — Poppins is self-hosted via `next/font/local` (woff2 files in
   `src/app/fonts/`), so builds succeed without any outbound font fetch.
-- **Theme** — dark charcoal + orange design system defined as Tailwind v4 tokens in
-  `src/app/globals.css` (base font size bumped to 106.25%).
+- **Theme** — light and dark themes (orange primary, chaicode-style greys) driven by
+  CSS variables in `src/app/globals.css` and toggled with the header button; the
+  choice persists in `localStorage`. Base font size is 103.125%.
 - **Rate limiting** — the public-form limiter is in-memory (per-instance). On
   serverless it's per-instance only; move to a shared store (e.g. Upstash Redis) if
   you need a global limit.
@@ -217,7 +220,7 @@ src/
     api/
       auth/[...all]/                 Better Auth handler
       public/surveys/[slug]/responses/  Public submission endpoint
-      surveys/[id]/export/           CSV/JSON/PDF downloads
+      surveys/[id]/export/           CSV/JSON downloads
     dashboard/                       Owner area (list, new, edit, preview,
                                      responses, analytics, demo-data)
     survey/[slug]/                   Public survey form
@@ -227,7 +230,7 @@ src/
   db/                                Drizzle schema + client
   lib/
     analytics/                       compute + load
-    exports/                         csv/json/pdf builders
+    exports/                         csv/json builders
     synthetic/                       seeded PRNG + generator
     surveys/, responses/, validation/, session, auth, db-retry
 tests/
@@ -239,7 +242,7 @@ drizzle/                             SQL migrations
 ## Notable deviations from the initial scaffold
 
 - `cacheComponents` was removed from `next.config.ts`.
-- `pdf-lib` is used instead of `pdfkit` (smaller, serverless-safe, no native deps).
+- Exports are CSV and JSON only; the earlier PDF export was dropped.
 - Google Fonts were replaced with self-hosted Poppins (`next/font/local`) for
   offline/CI build reliability.
 - One demo dataset per survey (`demo_datasets.surveyId` is unique); regenerating

@@ -2,13 +2,19 @@ import { cn } from "@/lib/utils";
 
 export function Card({
   className,
+  id,
+  style,
   children,
 }: {
   className?: string;
+  id?: string;
+  style?: React.CSSProperties;
   children: React.ReactNode;
 }) {
   return (
     <div
+      id={id}
+      style={style}
       className={cn(
         "rounded-xl border border-slate-200 bg-surface shadow-sm",
         className,
