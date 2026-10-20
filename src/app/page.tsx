@@ -10,7 +10,8 @@ import {
   Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardBody } from "@/components/ui/card";
+import { Alert, Card, CardBody } from "@/components/ui/card";
+import { Logo } from "@/components/logo";
 import { InteractiveAnalyticsPreview } from "@/components/landing/interactive-analytics-preview";
 import { ThemeToggle } from "@/components/theme-toggle";
 
@@ -53,17 +54,18 @@ const features = [
   },
 ];
 
-export default function HomePage() {
+export default async function HomePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ account?: string }>;
+}) {
+  const { account } = await searchParams;
+
   return (
     <div className="flex min-h-screen flex-col">
       <header className="border-b border-slate-200 bg-surface/80 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
-          <Link href="/" className="flex items-center gap-2 text-slate-900">
-            <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-600 text-white">
-              <BarChart3 className="h-5 w-5" aria-hidden />
-            </span>
-            <span className="text-lg font-semibold">Apex Insights</span>
-          </Link>
+          <Logo heightClass="h-9" />
           <nav className="flex items-center gap-2">
             <ThemeToggle />
             <Link
@@ -80,6 +82,13 @@ export default function HomePage() {
       </header>
 
       <main className="flex-1">
+        {account === "deleted" ? (
+          <div className="mx-auto w-full max-w-6xl px-4 pt-6">
+            <Alert tone="success">
+              Your account and all of its data have been permanently deleted.
+            </Alert>
+          </div>
+        ) : null}
         <section className="relative isolate overflow-hidden">
           <div aria-hidden className="pointer-events-none absolute inset-0 -z-10">
             <div className="animate-blob absolute -top-24 -left-20 h-72 w-72 rounded-full bg-indigo-500/20 blur-3xl" />

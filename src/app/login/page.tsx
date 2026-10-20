@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { BarChart3 } from "lucide-react";
 import { AuthForm } from "@/components/auth-form";
+import { Logo } from "@/components/logo";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Card, CardBody } from "@/components/ui/card";
 import { getSessionUser } from "@/lib/session";
@@ -18,12 +18,7 @@ export default async function LoginPage() {
       </div>
       <div className="w-full max-w-md">
         <div className="mb-6 flex flex-col items-center text-center">
-          <Link href="/" className="flex items-center gap-2 text-slate-900">
-            <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-600 text-white">
-              <BarChart3 className="h-5 w-5" aria-hidden />
-            </span>
-            <span className="text-lg font-semibold">Apex Insights</span>
-          </Link>
+          <Logo heightClass="h-10" />
           <h1 className="mt-4 text-2xl font-semibold text-slate-900">Welcome back</h1>
           <p className="mt-1 text-sm text-slate-500">Sign in to manage your surveys.</p>
         </div>

@@ -6,6 +6,7 @@ export type SessionUser = {
   id: string;
   name: string;
   email: string;
+  image: string | null;
 };
 
 export async function getSessionUser(): Promise<SessionUser | null> {
@@ -15,6 +16,7 @@ export async function getSessionUser(): Promise<SessionUser | null> {
     id: session.user.id,
     name: session.user.name,
     email: session.user.email,
+    image: session.user.image ?? null,
   };
 }
 

@@ -26,6 +26,8 @@ Auth, Zod, and Recharts.
 - **Exports** — CSV and JSON downloads for any data source.
 - **Theming** — light and dark themes (chaicode-style orange + charcoal palette) with
   a header toggle, persisted in `localStorage`.
+- **Account settings** — change your username, pick one of six default avatars, or
+  permanently delete your account and all of its data after confirming your password.
 
 ## Tech stack
 

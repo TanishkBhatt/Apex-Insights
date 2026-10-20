@@ -14,6 +14,8 @@ export function SignOutButton({ className }: { className?: string }) {
     <button
       type="button"
       disabled={pending}
+      aria-label="Sign out"
+      title="Sign out"
       onClick={async () => {
         setPending(true);
         await authClient.signOut();
@@ -26,7 +28,7 @@ export function SignOutButton({ className }: { className?: string }) {
       )}
     >
       <LogOut className="h-4 w-4" aria-hidden />
-      {pending ? "Signing out…" : "Sign out"}
+      <span className="hidden sm:inline">{pending ? "Signing out…" : "Sign out"}</span>
     </button>
   );
 }
