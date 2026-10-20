@@ -3,36 +3,51 @@ import { notFound } from "next/navigation";
 import { ArrowLeft, BarChart3, Sparkles } from "lucide-react";
 import { SurveyTabs } from "@/components/surveys/survey-tabs";
 import { SourceToggle } from "@/components/analytics/source-toggle";
+import { RangeToggle } from "@/components/analytics/range-toggle";
 import { ExportButtons } from "@/components/analytics/export-buttons";
 import { QuestionAnalytics } from "@/components/analytics/question-analytics";
 import { SubmissionsTimelineChart } from "@/components/analytics/charts";
 import { Alert, Card, CardBody, CardHeader, EmptyState } from "@/components/ui/card";
-import { computeAnalytics } from "@/lib/analytics/compute";
+import {
+  computeAnalytics,
+  filterRowsByRange,
+  type AnalyticsRange,
+} from "@/lib/analytics/compute";
 import { loadAnalytics, type AnalyticsSource } from "@/lib/analytics/load";
 import { requireUser } from "@/lib/session";
 
 const VALID_SOURCES: AnalyticsSource[] = ["real", "demo", "both"];
+const VALID_RANGES: AnalyticsRange[] = ["7", "30", "90", "all"];
 
 export default async function AnalyticsPage({
   params,
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ source?: string }>;
+  searchParams: Promise<{ source?: string; range?: string }>;
 }) {
   const user = await requireUser();
   const { id } = await params;
-  const { source: sourceParam } = await searchParams;
+  const { source: sourceParam, range: rangeParam } = await searchParams;
   const source: AnalyticsSource = VALID_SOURCES.includes(sourceParam as AnalyticsSource)
     ? (sourceParam as AnalyticsSource)
     : "real";
+  const range: AnalyticsRange = VALID_RANGES.includes(rangeParam as AnalyticsRange)
+    ? (rangeParam as AnalyticsRange)
+    : "all";
 
   const data = await loadAnalytics(user.id, id, source);
   if (!data) notFound();
 
-  const { summary, perQuestion } = computeAnalytics(data.questions, data.rows);
-  const totalForSource =
-    source === "real" ? data.sources.real : source === "demo" ? data.sources.demo : data.sources.real + data.sources.demo;
+  const rows = filterRowsByRange(data.rows, range);
+  const { summary, perQuestion } = computeAnalytics(data.questions, rows);
+  const totalForSource = rows.length;
+  const unfilteredTotal =
+    source === "real"
+      ? data.sources.real
+      : source === "demo"
+        ? data.sources.demo
+        : data.sources.real + data.sources.demo;
 
   return (
     <div className="space-y-6">
@@ -52,11 +67,18 @@ export default async function AnalyticsPage({
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <ExportButtons surveyId={id} source={source} />
+          <RangeToggle surveyId={id} current={range} />
           <SourceToggle surveyId={id} current={source} />
         </div>
       </div>
 
       <SurveyTabs surveyId={id} />
+
+      {range !== "all" && unfilteredTotal !== totalForSource ? (
+        <Alert tone="info">
+          Showing {totalForSource} of {unfilteredTotal} responses from the last {range} days.
+        </Alert>
+      ) : null}
 
       {source !== "real" ? (
         <Alert tone="warning">

@@ -19,6 +19,9 @@ const ownerId = `test-demo-owner-${randomUUID()}`;
 const input: SurveyWithQuestionsInput = {
   title: "Demo generator survey",
   description: "Temporary",
+  thankYouMessage: null,
+  closesAt: null,
+  maxResponses: null,
   questions: [
     {
       type: "dropdown",
@@ -33,10 +36,10 @@ const input: SurveyWithQuestionsInput = {
       config: {},
     },
     {
-      type: "linear_scale",
+      type: "slider",
       title: "How happy are you?",
       required: true,
-      config: { min: 1, max: 5, minLabel: "Low", maxLabel: "High" },
+      config: { min: 1, max: 5, step: 1, minLabel: "Low", maxLabel: "High" },
     },
     { type: "yes_no", title: "Would recommend?", required: false, config: {} },
     { type: "short_text", title: "What is your full name?", required: false, config: {} },

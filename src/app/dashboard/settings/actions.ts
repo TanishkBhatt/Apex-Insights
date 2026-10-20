@@ -1,6 +1,6 @@
 "use server";
 
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import {
@@ -8,8 +8,9 @@ import {
   updateUserProfile,
   verifyAccountPassword,
 } from "@/lib/account";
+import { auth } from "@/lib/auth";
 import { requireUser } from "@/lib/session";
-import { profileSchema } from "@/lib/validation/account";
+import { changePasswordSchema, profileSchema } from "@/lib/validation/account";
 
 export type ProfileActionState = {
   status: "success" | "error";
@@ -20,6 +21,16 @@ export type ProfileActionState = {
 export type DeleteActionState = {
   status: "error";
   message: string;
+} | null;
+
+export type PasswordActionState = {
+  status: "success" | "error";
+  message: string;
+  errors?: {
+    currentPassword?: string[];
+    newPassword?: string[];
+    confirmPassword?: string[];
+  };
 } | null;
 
 export async function updateProfileAction(
@@ -56,6 +67,56 @@ export async function updateProfileAction(
   revalidatePath("/dashboard/settings");
 
   return { status: "success", message: "Profile updated successfully." };
+}
+
+export async function changePasswordAction(
+  _prev: PasswordActionState,
+  formData: FormData,
+): Promise<PasswordActionState> {
+  const current = await requireUser();
+  const parsed = changePasswordSchema.safeParse({
+    currentPassword: String(formData.get("currentPassword") ?? ""),
+    newPassword: String(formData.get("newPassword") ?? ""),
+    confirmPassword: String(formData.get("confirmPassword") ?? ""),
+  });
+
+  if (!parsed.success) {
+    return {
+      status: "error",
+      message: "Please fix the highlighted fields.",
+      errors: parsed.error.flatten().fieldErrors,
+    };
+  }
+
+  if (!(await verifyAccountPassword(current.id, parsed.data.currentPassword))) {
+    return {
+      status: "error",
+      message: "Your current password is incorrect.",
+      errors: { currentPassword: ["Current password is incorrect."] },
+    };
+  }
+
+  try {
+    await auth.api.changePassword({
+      body: {
+        currentPassword: parsed.data.currentPassword,
+        newPassword: parsed.data.newPassword,
+        revokeOtherSessions: true,
+      },
+      headers: await headers(),
+    });
+  } catch {
+    return {
+      status: "error",
+      message: "Your password could not be changed. Please try again.",
+    };
+  }
+
+  revalidatePath("/dashboard/settings");
+  return {
+    status: "success",
+    message: "Password updated. Other sessions have been signed out.",
+  };
 }
 
 export async function deleteAccountAction(

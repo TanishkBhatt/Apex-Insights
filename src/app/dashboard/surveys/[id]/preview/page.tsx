@@ -66,14 +66,21 @@ export default async function PreviewSurveyPage({
             <ol className="space-y-6">
               {survey.questions.map((question, index) => (
                 <li key={question.id} className="space-y-2">
-                  <p className="text-sm font-medium text-slate-800">
-                    {index + 1}. {question.title}
-                    {question.required ? (
-                      <span className="ml-1 text-red-600" aria-label="required">
-                        *
-                      </span>
+                  <div>
+                    <p className="text-sm font-medium text-slate-800">
+                      {index + 1}. {question.title}
+                      {question.required ? (
+                        <span className="ml-1 text-red-600" aria-label="required">
+                          *
+                        </span>
+                      ) : null}
+                    </p>
+                    {question.config.helpText ? (
+                      <p className="mt-1 text-xs text-slate-500">
+                        {question.config.helpText}
+                      </p>
                     ) : null}
-                  </p>
+                  </div>
                   <QuestionField
                     question={question}
                     value={undefined}

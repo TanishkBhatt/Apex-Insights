@@ -15,6 +15,20 @@
       "when": 1792243039293,
       "tag": "0001_absurd_blockbuster",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1792500722244,
+      "tag": "0002_survey_types_and_settings",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1792500783040,
+      "tag": "0003_migrate_linear_scale_to_slider",
+      "breakpoints": true
     }
   ]
 }

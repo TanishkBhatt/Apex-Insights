@@ -1,5 +1,6 @@
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { DeleteAccountForm } from "@/components/settings/delete-account-form";
+import { PasswordForm } from "@/components/settings/password-form";
 import { ProfileForm } from "@/components/settings/profile-form";
 import { requireUser } from "@/lib/session";
 
@@ -26,6 +27,16 @@ export default async function SettingsPage() {
           <ProfileForm
             user={{ name: user.name, email: user.email, image: user.image }}
           />
+        </CardBody>
+      </Card>
+
+      <Card>
+        <CardHeader
+          title="Password"
+          description="Change the password used to sign in to your account."
+        />
+        <CardBody>
+          <PasswordForm />
         </CardBody>
       </Card>
 

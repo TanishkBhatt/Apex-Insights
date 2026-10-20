@@ -6,8 +6,39 @@ export function formatAnswerValue(type: string, value: AnalyticsAnswerValue): st
   if (type === "yes_no") return value === true || value === "true" ? "Yes" : "No";
   if (Array.isArray(value)) return value.join("; ");
   if (typeof value === "boolean") return value ? "Yes" : "No";
+  if (typeof value === "object") {
+    return Object.entries(value)
+      .map(([row, column]) => `${row}: ${column}`)
+      .join("; ");
+  }
   return String(value);
 }
+
+/** Safe folder name used inside the ZIP and as the ZIP's display name. */
+export function exportFolderName(title: string): string {
+  const cleaned = title
+    .replace(/[<>:"/\\|?*\u0000-\u001f]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/[. ]+$/g, "")
+    .slice(0, 80);
+  return `${cleaned || "Survey"} - ApexInsights`;
+}
+
+export function zipFilename(title: string): string {
+  return `${exportFolderName(title)}.zip`;
+}
+
+/** RFC 5987-safe Content-Disposition value with an ASCII fallback. */
+export function attachmentDisposition(filename: string): string {
+  const ascii = filename
+    .replace(/[^\x20-\x7e]/g, "_")
+    .replace(/["\\]/g, "_");
+  const encoded = encodeURIComponent(filename)
+    .replace(/['()*]/g, (char) => `%${char.charCodeAt(0).toString(16).toUpperCase()}`);
+  return `attachment; filename="${ascii}"; filename*=UTF-8''${encoded}`;
+}
+
 
 function escapeCsvField(field: string): string {
   if (/[",\r\n]/.test(field)) {

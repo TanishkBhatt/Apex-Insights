@@ -9,8 +9,11 @@ export function ThemeToggle({ className }: { className?: string }) {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    setIsDark(document.documentElement.classList.contains("dark"));
-    setMounted(true);
+    const frame = requestAnimationFrame(() => {
+      setIsDark(document.documentElement.classList.contains("dark"));
+      setMounted(true);
+    });
+    return () => cancelAnimationFrame(frame);
   }, []);
 
   function toggle() {

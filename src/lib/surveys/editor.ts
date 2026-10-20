@@ -6,12 +6,19 @@ export type EditorQuestion = {
   type: QuestionType;
   title: string;
   required: boolean;
+  helpText: string;
   options: string[];
-  min: number;
-  max: number;
+  rows: string[];
+  columns: string[];
+  min: string;
+  max: string;
+  step: string;
   minLabel: string;
   maxLabel: string;
   placeholder: string;
+  icon: "star" | "heart" | "thumb";
+  allowOther: boolean;
+  shuffleOptions: boolean;
 };
 
 export type EditorSurvey = {
@@ -19,8 +26,14 @@ export type EditorSurvey = {
   title: string;
   description: string;
   status: "draft" | "published" | "closed";
+  thankYouMessage: string;
+  closesAt: string;
+  maxResponses: string;
   questions: EditorQuestion[];
 };
+
+export type EditorDraft = Pick<EditorSurvey, "title" | "description" | "questions"> &
+  Partial<Pick<EditorSurvey, "thankYouMessage" | "closesAt" | "maxResponses">>;
 
 export function emptyQuestion(type: QuestionType): EditorQuestion {
   const config = defaultConfigFor(type);
@@ -28,13 +41,30 @@ export function emptyQuestion(type: QuestionType): EditorQuestion {
     type,
     title: "",
     required: false,
+    helpText: "",
     options: config.options ?? [],
-    min: config.min ?? 1,
-    max: config.max ?? 5,
+    rows: config.rows ?? [],
+    columns: config.columns ?? [],
+    min: config.min !== undefined ? String(config.min) : "",
+    max: config.max !== undefined ? String(config.max) : "",
+    step: config.step !== undefined ? String(config.step) : "",
     minLabel: config.minLabel ?? "",
     maxLabel: config.maxLabel ?? "",
     placeholder: config.placeholder ?? "",
+    icon: config.icon ?? "star",
+    allowOther: false,
+    shuffleOptions: false,
   };
+}
+
+function toLocalDateTimeInput(value: Date | null): string {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  const pad = (part: number) => String(part).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(
+    date.getHours(),
+  )}:${pad(date.getMinutes())}`;
 }
 
 export function surveyToEditor(survey: {
@@ -42,9 +72,12 @@ export function surveyToEditor(survey: {
   title: string;
   description: string | null;
   status: "draft" | "published" | "closed";
+  thankYouMessage: string | null;
+  closesAt: Date | null;
+  maxResponses: number | null;
   questions: Array<{
     id: string;
-    type: QuestionType;
+    type: QuestionType | string;
     title: string;
     required: boolean;
     config: QuestionConfig;
@@ -55,17 +88,30 @@ export function surveyToEditor(survey: {
     title: survey.title,
     description: survey.description ?? "",
     status: survey.status,
+    thankYouMessage: survey.thankYouMessage ?? "",
+    closesAt: toLocalDateTimeInput(survey.closesAt),
+    maxResponses: survey.maxResponses ? String(survey.maxResponses) : "",
     questions: survey.questions.map((question) => ({
       id: question.id,
-      type: question.type,
+      type: (question.type === "linear_scale" ? "slider" : question.type) as QuestionType,
       title: question.title,
       required: question.required,
+      helpText: question.config.helpText ?? "",
       options: question.config.options ?? [],
-      min: question.config.min ?? 1,
-      max: question.config.max ?? 5,
+      rows: question.config.rows ?? [],
+      columns: question.config.columns ?? [],
+      min:
+        question.config.min !== undefined ? String(question.config.min) : "",
+      max:
+        question.config.max !== undefined ? String(question.config.max) : "",
+      step:
+        question.config.step !== undefined ? String(question.config.step) : "",
       minLabel: question.config.minLabel ?? "",
       maxLabel: question.config.maxLabel ?? "",
       placeholder: question.config.placeholder ?? "",
+      icon: question.config.icon ?? "star",
+      allowOther: question.config.allowOther ?? false,
+      shuffleOptions: question.config.shuffleOptions ?? false,
     })),
   };
 }

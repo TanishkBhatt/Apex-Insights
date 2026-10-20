@@ -19,7 +19,7 @@ export function SurveyTabs({ surveyId }: { surveyId: string }) {
     <nav className="flex flex-wrap gap-1 border-b border-slate-200">
       {tabs.map((tab) => {
         const href = `/dashboard/surveys/${surveyId}/${tab.segment}`;
-        const active = pathname === href;
+        const active = pathname === href || pathname.startsWith(`${href}/`);
         return (
           <Link
             key={tab.segment}

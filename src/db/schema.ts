@@ -16,29 +16,48 @@ import {
 export type QuestionType =
   | "short_text"
   | "paragraph"
+  | "number"
+  | "email"
   | "single_choice"
   | "multiple_choice"
   | "dropdown"
-  | "linear_scale"
-  | "yes_no";
+  | "slider"
+  | "rating"
+  | "nps"
+  | "ranking"
+  | "matrix"
+  | "yes_no"
+  | "linear_scale";
 
 export type SurveyStatus = "draft" | "published" | "closed";
 
 /**
  * Structured, validated question configuration stored as JSONB.
  * Which fields are required for a given type is enforced by Zod
- * (src/lib/validation/question.ts) and by CHECK constraints below.
+ * (src/lib/validation/survey.ts).
  */
 export type QuestionConfig = {
   options?: string[];
+  rows?: string[];
+  columns?: string[];
   min?: number;
   max?: number;
+  step?: number;
   minLabel?: string;
   maxLabel?: string;
   placeholder?: string;
+  helpText?: string;
+  icon?: "star" | "heart" | "thumb";
+  allowOther?: boolean;
+  shuffleOptions?: boolean;
 };
 
-export type AnswerValue = string | number | boolean | string[];
+export type AnswerValue =
+  | string
+  | number
+  | boolean
+  | string[]
+  | Record<string, string>;
 
 /* ------------------------------------------------------------------ */
 /* Better Auth tables (official Drizzle integration shape)            */
@@ -111,11 +130,18 @@ export const surveyStatus = pgEnum("survey_status", ["draft", "published", "clos
 export const questionTypeEnum = pgEnum("question_type", [
   "short_text",
   "paragraph",
+  "number",
+  "email",
   "single_choice",
   "multiple_choice",
   "dropdown",
-  "linear_scale",
+  "slider",
+  "rating",
+  "nps",
+  "ranking",
+  "matrix",
   "yes_no",
+  "linear_scale",
 ]);
 
 export const surveys = pgTable(
@@ -129,6 +155,9 @@ export const surveys = pgTable(
     description: text("description"),
     slug: text("slug").notNull().unique(),
     status: surveyStatus("status").notNull().default("draft"),
+    thankYouMessage: text("thank_you_message"),
+    closesAt: timestamp("closes_at", { withTimezone: true }),
+    maxResponses: integer("max_responses"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
     publishedAt: timestamp("published_at", { withTimezone: true }),
@@ -137,6 +166,10 @@ export const surveys = pgTable(
     index("surveys_owner_id_idx").on(t.ownerId),
     index("surveys_status_idx").on(t.status),
     check("surveys_title_not_blank", sql`length(btrim(${t.title})) BETWEEN 1 AND 300`),
+    check(
+      "surveys_max_responses_positive",
+      sql`${t.maxResponses} IS NULL OR ${t.maxResponses} > 0`,
+    ),
   ],
 );
 

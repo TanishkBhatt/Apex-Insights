@@ -7,6 +7,7 @@ import { answers, questions, responses, surveys, user } from "@/db/schema";
 import {
   createSurvey,
   deleteSurvey,
+  duplicateSurvey,
   getPublishedSurveyBySlug,
   getSurveyForOwner,
   listSurveysForOwner,
@@ -21,6 +22,9 @@ const otherId = `test-other-${randomUUID()}`;
 const baseInput: SurveyWithQuestionsInput = {
   title: "Integration test survey",
   description: "Temporary",
+  thankYouMessage: null,
+  closesAt: null,
+  maxResponses: null,
   questions: [
     { type: "yes_no", title: "Do you agree?", required: true, config: {} },
     {
@@ -68,6 +72,33 @@ describe("survey service", () => {
     expect(loaded?.questions.map((q) => q.position)).toEqual([0, 1]);
 
     await db.delete(surveys).where(eq(surveys.id, survey.id));
+  });
+
+  it("duplicates a survey as a draft with fresh question ids", async () => {
+    const source = await createSurvey(ownerId, {
+      ...baseInput,
+      thankYouMessage: "Thanks for taking part!",
+      maxResponses: 50,
+    });
+    await transitionSurveyStatus(ownerId, source.id, "published");
+
+    const copy = await duplicateSurvey(ownerId, source.id);
+    expect(copy.id).not.toBe(source.id);
+    expect(copy.title).toBe(`${source.title} (copy)`);
+    expect(copy.status).toBe("draft");
+    expect(copy.slug).not.toBe(source.slug);
+
+    const sourceLoaded = await getSurveyForOwner(ownerId, source.id);
+    const loaded = await getSurveyForOwner(ownerId, copy.id);
+    expect(loaded?.thankYouMessage).toBe("Thanks for taking part!");
+    expect(loaded?.maxResponses).toBeNull();
+    expect(loaded?.questions.map((question) => question.title)).toEqual(
+      baseInput.questions.map((question) => question.title),
+    );
+    expect(loaded?.questions[0].id).not.toBe(sourceLoaded?.questions[0].id);
+
+    await db.delete(surveys).where(eq(surveys.id, copy.id));
+    await db.delete(surveys).where(eq(surveys.id, source.id));
   });
 
   it("does not allow another creator to read or update a survey", async () => {
@@ -125,9 +156,12 @@ describe("survey service", () => {
     const updated = await updateSurvey(ownerId, survey.id, {
       title: "Renamed",
       description: null,
+      thankYouMessage: null,
+      closesAt: null,
+      maxResponses: null,
       questions: [
-        { id: second.id, type: second.type, title: second.title, required: false, config: second.config },
-        { id: first.id, type: first.type, title: "Do you agree? (edited)", required: true, config: {} },
+        { id: second.id, type: "single_choice", title: second.title, required: false, config: second.config },
+        { id: first.id, type: "yes_no", title: "Do you agree? (edited)", required: true, config: {} },
         {
           type: "paragraph",
           title: "Anything else?",
@@ -186,6 +220,9 @@ describe("survey service", () => {
       updateSurvey(ownerId, survey.id, {
         title: baseInput.title,
         description: null,
+        thankYouMessage: null,
+        closesAt: null,
+        maxResponses: null,
         questions: [{ id: question.id, type: "short_text", title: question.title, required: true, config: {} }],
       }),
     ).rejects.toThrow(/cannot change the type/i);
@@ -197,6 +234,9 @@ describe("survey service", () => {
     const survey = await createSurvey(ownerId, {
       title: "Name survey",
       description: null,
+      thankYouMessage: null,
+      closesAt: null,
+      maxResponses: null,
       questions: [
         { type: "short_text", title: "Your name", required: true, config: {} },
         { type: "paragraph", title: "Comments", required: false, config: {} },
@@ -218,17 +258,20 @@ describe("survey service", () => {
     const updated = await updateSurvey(ownerId, survey.id, {
       title: "Name survey",
       description: null,
+      thankYouMessage: null,
+      closesAt: null,
+      maxResponses: null,
       questions: [
         {
           id: nameQuestion.id,
-          type: nameQuestion.type,
+          type: "short_text",
           title: nameQuestion.title,
           required: true,
           config: {},
         },
         {
           id: paragraphQuestion.id,
-          type: paragraphQuestion.type,
+          type: "paragraph",
           title: paragraphQuestion.title,
           required: false,
           config: {},

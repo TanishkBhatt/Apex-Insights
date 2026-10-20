@@ -5,6 +5,7 @@ import { requireUser } from "@/lib/session";
 import {
   createSurvey,
   deleteSurvey,
+  duplicateSurvey,
   transitionSurveyStatus,
   updateSurvey,
   SurveyServiceError,
@@ -17,6 +18,7 @@ import {
   generateSyntheticDataset,
   deleteDemoDatasetForOwner,
 } from "@/lib/synthetic/generator";
+import { deleteResponseForOwner } from "@/lib/responses/service";
 
 export type ActionState =
   | { ok: true; surveyId?: string; message?: string }
@@ -92,6 +94,31 @@ export async function updateSurveyAction(
   }
 }
 
+export async function duplicateSurveyAction(
+  surveyId: string,
+): Promise<ActionState> {
+  const user = await requireUser();
+  if (typeof surveyId !== "string" || !/^[0-9a-f-]{36}$/i.test(surveyId)) {
+    return { ok: false, error: "Invalid survey." };
+  }
+
+  try {
+    const copy = await duplicateSurvey(user.id, surveyId);
+    revalidatePath("/dashboard");
+    return {
+      ok: true,
+      surveyId: copy.id,
+      message: "Survey duplicated as a draft.",
+    };
+  } catch (error) {
+    const message =
+      error instanceof SurveyServiceError
+        ? error.message
+        : "Could not duplicate the survey. Please try again.";
+    return { ok: false, error: message };
+  }
+}
+
 export async function deleteSurveyAction(surveyId: string): Promise<ActionState> {
   const user = await requireUser();
   if (typeof surveyId !== "string") return { ok: false, error: "Invalid survey." };
@@ -131,6 +158,32 @@ export async function setSurveyStatusAction(
         ? error.message
         : "Could not update the survey status.";
     return { ok: false, error: message };
+  }
+}
+
+export async function deleteResponseAction(
+  surveyId: string,
+  responseId: string,
+): Promise<ActionState> {
+  const user = await requireUser();
+  if (
+    typeof surveyId !== "string" ||
+    typeof responseId !== "string" ||
+    !/^[0-9a-f-]{36}$/i.test(surveyId) ||
+    !/^[0-9a-f-]{36}$/i.test(responseId)
+  ) {
+    return { ok: false, error: "Invalid response." };
+  }
+
+  try {
+    const deleted = await deleteResponseForOwner(user.id, surveyId, responseId);
+    if (!deleted) return { ok: false, error: "Response not found." };
+    revalidatePath(`/dashboard/surveys/${surveyId}/responses`);
+    revalidatePath(`/dashboard/surveys/${surveyId}/analytics`);
+    revalidatePath("/dashboard");
+    return { ok: true, message: "Response deleted." };
+  } catch {
+    return { ok: false, error: "Could not delete the response. Please try again." };
   }
 }
 

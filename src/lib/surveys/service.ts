@@ -15,6 +15,7 @@ import {
 import { canTransition, generateSlug } from "@/lib/surveys/lifecycle";
 import {
   isChoiceType,
+  isOtherAnswerValue,
   type QuestionInput,
   type SurveyWithQuestionsInput,
 } from "@/lib/validation/survey";
@@ -39,6 +40,9 @@ export type PublicSurvey = {
   title: string;
   description: string | null;
   status: SurveyStatus;
+  thankYouMessage: string | null;
+  closesAt: Date | null;
+  maxResponses: number | null;
   questions: Array<{
     id: string;
     type: Question["type"];
@@ -51,23 +55,53 @@ export type PublicSurvey = {
 
 function normalizeConfig(input: QuestionInput): QuestionConfig {
   const config = input.config;
+  const helpText = config.helpText ? { helpText: config.helpText } : {};
   switch (input.type) {
     case "single_choice":
     case "multiple_choice":
     case "dropdown":
-      return { options: config.options ?? [] };
-    case "linear_scale":
       return {
-        min: config.min ?? 1,
-        max: config.max ?? 5,
+        options: config.options ?? [],
+        ...(config.allowOther ? { allowOther: true } : {}),
+        ...(config.shuffleOptions ? { shuffleOptions: true } : {}),
+        ...helpText,
+      };
+    case "ranking":
+      return { options: config.options ?? [], ...helpText };
+    case "matrix":
+      return {
+        rows: config.rows ?? [],
+        columns: config.columns ?? [],
+        ...helpText,
+      };
+    case "slider":
+      return {
+        min: config.min ?? 0,
+        max: config.max ?? 10,
+        step: config.step ?? 1,
         ...(config.minLabel ? { minLabel: config.minLabel } : {}),
         ...(config.maxLabel ? { maxLabel: config.maxLabel } : {}),
+        ...helpText,
+      };
+    case "rating":
+      return { icon: config.icon ?? "star", ...helpText };
+    case "number":
+      return {
+        ...(config.min !== undefined ? { min: config.min } : {}),
+        ...(config.max !== undefined ? { max: config.max } : {}),
+        ...(config.step !== undefined ? { step: config.step } : {}),
+        ...(config.placeholder ? { placeholder: config.placeholder } : {}),
+        ...helpText,
       };
     case "short_text":
     case "paragraph":
-      return config.placeholder ? { placeholder: config.placeholder } : {};
+    case "email":
+      return {
+        ...(config.placeholder ? { placeholder: config.placeholder } : {}),
+        ...helpText,
+      };
     default:
-      return {};
+      return helpText;
   }
 }
 
@@ -121,6 +155,14 @@ export async function listSurveysForOwner(ownerId: string): Promise<SurveySummar
   }));
 }
 
+export async function countSurveyResponses(surveyId: string): Promise<number> {
+  const [row] = await db
+    .select({ value: count() })
+    .from(responses)
+    .where(eq(responses.surveyId, surveyId));
+  return Number(row?.value ?? 0);
+}
+
 export async function getSurveyForOwner(
   ownerId: string,
   surveyId: string,
@@ -169,6 +211,9 @@ export async function getPublishedSurveyBySlug(slug: string): Promise<PublicSurv
     title: survey.title,
     description: survey.description,
     status: survey.status,
+    thankYouMessage: survey.thankYouMessage,
+    closesAt: survey.closesAt,
+    maxResponses: survey.maxResponses,
     questions: questionRows,
   };
 }
@@ -207,6 +252,9 @@ export async function createSurvey(
             ownerId,
             title: input.title,
             description: input.description,
+            thankYouMessage: input.thankYouMessage,
+            closesAt: input.closesAt,
+            maxResponses: input.maxResponses,
             slug,
             status: "draft",
           })
@@ -221,16 +269,71 @@ export async function createSurvey(
   throw new SurveyServiceError("Could not create the survey. Please try again.");
 }
 
+type AnswerUsage = {
+  answerCounts: Map<string, number>;
+  usedOptions: Map<string, Set<string>>;
+  usedRows: Map<string, Set<string>>;
+  usedColumns: Map<string, Set<string>>;
+};
+
+export async function duplicateSurvey(
+  ownerId: string,
+  surveyId: string,
+): Promise<Survey> {
+  const source = await getSurveyForOwner(ownerId, surveyId);
+  if (!source) throw new SurveyServiceError("Survey not found.");
+
+  const title = `${source.title} (copy)`.slice(0, 300);
+
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const slug = generateSlug();
+    try {
+      return await db.transaction(async (tx) => {
+        const [copy] = await tx
+          .insert(surveys)
+          .values({
+            ownerId,
+            title,
+            description: source.description,
+            thankYouMessage: source.thankYouMessage,
+            slug,
+            status: "draft",
+          })
+          .returning();
+
+        if (source.questions.length > 0) {
+          await tx.insert(questions).values(
+            source.questions.map((question, index) => ({
+              surveyId: copy.id,
+              type: question.type,
+              title: question.title,
+              required: question.required,
+              position: index,
+              config: question.config,
+            })),
+          );
+        }
+
+        return copy;
+      });
+    } catch (error) {
+      if (attempt === 4) throw error;
+    }
+  }
+  throw new SurveyServiceError("Could not duplicate the survey. Please try again.");
+}
+
 async function loadAnswerUsage(
   tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
   questionIds: string[],
-): Promise<{
-  answerCounts: Map<string, number>;
-  usedOptions: Map<string, Set<string>>;
-}> {
+): Promise<AnswerUsage> {
   const answerCounts = new Map<string, number>();
   const usedOptions = new Map<string, Set<string>>();
-  if (questionIds.length === 0) return { answerCounts, usedOptions };
+  const usedRows = new Map<string, Set<string>>();
+  const usedColumns = new Map<string, Set<string>>();
+  if (questionIds.length === 0) {
+    return { answerCounts, usedOptions, usedRows, usedColumns };
+  }
 
   const counts = await tx
     .select({ questionId: answers.questionId, value: count() })
@@ -245,20 +348,75 @@ async function loadAnswerUsage(
     .where(inArray(answers.questionId, questionIds));
 
   for (const row of distinctValues) {
-    const set = usedOptions.get(row.questionId) ?? new Set<string>();
-    if (typeof row.value === "string") set.add(row.value);
-    else if (Array.isArray(row.value)) row.value.forEach((v) => set.add(String(v)));
-    usedOptions.set(row.questionId, set);
+    const options = usedOptions.get(row.questionId) ?? new Set<string>();
+    const rows = usedRows.get(row.questionId) ?? new Set<string>();
+    const columns = usedColumns.get(row.questionId) ?? new Set<string>();
+    if (typeof row.value === "string") {
+      options.add(row.value);
+    } else if (Array.isArray(row.value)) {
+      row.value.forEach((v) => options.add(String(v)));
+    } else if (row.value && typeof row.value === "object") {
+      for (const [matrixRow, matrixColumn] of Object.entries(row.value)) {
+        rows.add(matrixRow);
+        columns.add(String(matrixColumn));
+      }
+    }
+    usedOptions.set(row.questionId, options);
+    usedRows.set(row.questionId, rows);
+    usedColumns.set(row.questionId, columns);
   }
 
-  return { answerCounts, usedOptions };
+  return { answerCounts, usedOptions, usedRows, usedColumns };
+}
+
+function assertNumericConfigWidened(
+  existing: Question,
+  next: QuestionInput,
+): void {
+  const existingMin = existing.config.min ?? 0;
+  const existingMax = existing.config.max ?? 10;
+  const existingStep = existing.config.step ?? 1;
+  const nextMin = next.config.min ?? 0;
+  const nextMax = next.config.max ?? 10;
+  const nextStep = next.config.step ?? 1;
+
+  if (nextMin > existingMin || nextMax < existingMax || nextStep !== existingStep) {
+    throw new SurveyServiceError(
+      `The range or step of "${existing.title}" cannot change because it already has responses.`,
+    );
+  }
+}
+
+function assertNumberConfigWidened(existing: Question, next: QuestionInput): void {
+  const existingMin = existing.config.min;
+  const existingMax = existing.config.max;
+  const existingStep = existing.config.step;
+  const nextMin = next.config.min;
+  const nextMax = next.config.max;
+  const nextStep = next.config.step;
+
+  if (existingMin === undefined ? nextMin !== undefined : nextMin !== undefined && nextMin > existingMin) {
+    throw new SurveyServiceError(
+      `The minimum of "${existing.title}" cannot be narrowed because it already has responses.`,
+    );
+  }
+  if (existingMax === undefined ? nextMax !== undefined : nextMax !== undefined && nextMax < existingMax) {
+    throw new SurveyServiceError(
+      `The maximum of "${existing.title}" cannot be narrowed because it already has responses.`,
+    );
+  }
+  if (existingStep !== nextStep) {
+    throw new SurveyServiceError(
+      `The step of "${existing.title}" cannot change because it already has responses.`,
+    );
+  }
 }
 
 function assertConfigChangeAllowed(
   existing: Question,
   next: QuestionInput,
   answerCount: number,
-  usedOptions: Set<string>,
+  usage: { usedOptions: Set<string>; usedRows: Set<string>; usedColumns: Set<string> },
 ): void {
   if (answerCount === 0) return;
 
@@ -268,12 +426,17 @@ function assertConfigChangeAllowed(
     );
   }
 
-  // Only choice questions store options. For text, scale and yes/no questions the
-  // recorded answers are free-form values, so they must not be matched against an
-  // option list (that previously made any save fail once a text answer existed).
   if (isChoiceType(existing.type)) {
     const nextOptions = next.config.options ?? [];
-    for (const option of usedOptions) {
+    for (const option of usage.usedOptions) {
+      if (isOtherAnswerValue(option)) {
+        if (next.config.allowOther !== true) {
+          throw new SurveyServiceError(
+            `Cannot disable the Other option on "${existing.title}" because responses use it.`,
+          );
+        }
+        continue;
+      }
       if (!nextOptions.includes(option)) {
         throw new SurveyServiceError(
           `Cannot remove the option "${option}" from "${existing.title}" because responses reference it.`,
@@ -282,16 +445,42 @@ function assertConfigChangeAllowed(
     }
   }
 
-  if (existing.type === "linear_scale") {
-    const existingMin = existing.config.min ?? 1;
-    const existingMax = existing.config.max ?? 5;
-    const nextMin = next.config.min ?? 1;
-    const nextMax = next.config.max ?? 5;
-    if (nextMin > existingMin || nextMax < existingMax) {
-      throw new SurveyServiceError(
-        `The scale of "${existing.title}" cannot be narrowed because it already has responses.`,
-      );
+  if (existing.type === "ranking") {
+    const nextOptions = next.config.options ?? [];
+    for (const option of usage.usedOptions) {
+      if (!nextOptions.includes(option)) {
+        throw new SurveyServiceError(
+          `Cannot remove the ranking item "${option}" from "${existing.title}" because responses reference it.`,
+        );
+      }
     }
+  }
+
+  if (existing.type === "matrix") {
+    const nextRows = next.config.rows ?? [];
+    const nextColumns = next.config.columns ?? [];
+    for (const row of usage.usedRows) {
+      if (!nextRows.includes(row)) {
+        throw new SurveyServiceError(
+          `Cannot remove the matrix row "${row}" from "${existing.title}" because responses reference it.`,
+        );
+      }
+    }
+    for (const column of usage.usedColumns) {
+      if (!nextColumns.includes(column)) {
+        throw new SurveyServiceError(
+          `Cannot remove the matrix option "${column}" from "${existing.title}" because responses reference it.`,
+        );
+      }
+    }
+  }
+
+  if (existing.type === "slider") {
+    assertNumericConfigWidened(existing, next);
+  }
+
+  if (existing.type === "number") {
+    assertNumberConfigWidened(existing, next);
   }
 }
 
@@ -308,6 +497,21 @@ export async function updateSurvey(
       .limit(1);
     if (!survey) throw new SurveyServiceError("Survey not found.");
 
+    const [realResponseCount] = await tx
+      .select({ value: count() })
+      .from(responses)
+      .where(eq(responses.surveyId, surveyId));
+    if (
+      input.maxResponses !== null &&
+      input.maxResponses < Number(realResponseCount?.value ?? 0)
+    ) {
+      throw new SurveyServiceError(
+        `The response limit cannot be lower than the ${Number(
+          realResponseCount?.value ?? 0,
+        )} responses already collected.`,
+      );
+    }
+
     const existingQuestions = await tx
       .select()
       .from(questions)
@@ -315,10 +519,11 @@ export async function updateSurvey(
       .orderBy(questions.position);
 
     const existingById = new Map(existingQuestions.map((q) => [q.id, q]));
-    const { answerCounts, usedOptions } = await loadAnswerUsage(
+    const usage = await loadAnswerUsage(
       tx,
       existingQuestions.map((q) => q.id),
     );
+    const { answerCounts } = usage;
 
     const keptIds = new Set(
       input.questions.map((q) => q.id).filter((id): id is string => Boolean(id)),
@@ -364,7 +569,11 @@ export async function updateSurvey(
           existing,
           next,
           answerCounts.get(next.id) ?? 0,
-          usedOptions.get(next.id) ?? new Set(),
+          {
+            usedOptions: usage.usedOptions.get(next.id) ?? new Set(),
+            usedRows: usage.usedRows.get(next.id) ?? new Set(),
+            usedColumns: usage.usedColumns.get(next.id) ?? new Set(),
+          },
         );
         await tx
           .update(questions)
@@ -394,6 +603,9 @@ export async function updateSurvey(
       .set({
         title: input.title,
         description: input.description,
+        thankYouMessage: input.thankYouMessage,
+        closesAt: input.closesAt,
+        maxResponses: input.maxResponses,
         updatedAt: new Date(),
       })
       .where(eq(surveys.id, surveyId))

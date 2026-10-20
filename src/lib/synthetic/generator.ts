@@ -6,16 +6,18 @@ import { createPrng, pick, pickMultiple, randomInt } from "./prng";
 import { SurveyServiceError } from "@/lib/surveys/service";
 import { LIMITS } from "@/lib/validation/survey";
 
-export const GENERATOR_VERSION = "v1";
+export const GENERATOR_VERSION = "v2";
 
 export type DemoGenerationConfig = {
   count: number;
   pattern: "balanced" | "random";
 };
 
+type GeneratedValue = string | number | boolean | string[] | Record<string, string>;
+
 type GeneratedAnswer = {
   questionId: string;
-  value: string | number | boolean | string[];
+  value: GeneratedValue;
 };
 
 const FIRST_NAMES = [
@@ -82,6 +84,29 @@ function generateTextAnswer(
   return "";
 }
 
+function generateNumericAnswer(
+  rand: () => number,
+  config: QuestionConfig,
+  fallbackMin: number,
+  fallbackMax: number,
+): number {
+  const min = config.min ?? fallbackMin;
+  const max = config.max === undefined ? fallbackMax : config.max;
+  if (max <= min) return min;
+  const step = config.step ?? 1;
+  const steps = Math.floor((max - min) / step);
+  return Math.round((min + randomInt(rand, 0, Math.max(0, steps)) * step) * 1e6) / 1e6;
+}
+
+function shuffle<T>(rand: () => number, values: T[]): T[] {
+  const copy = [...values];
+  for (let index = copy.length - 1; index > 0; index -= 1) {
+    const target = randomInt(rand, 0, index);
+    [copy[index], copy[target]] = [copy[target], copy[index]];
+  }
+  return copy;
+}
+
 function generateAnswerForQuestion(rand: () => number, question: Question): GeneratedAnswer {
   const config = question.config as QuestionConfig;
   switch (question.type) {
@@ -91,22 +116,69 @@ function generateAnswerForQuestion(rand: () => number, question: Question): Gene
         questionId: question.id,
         value: generateTextAnswer(rand, question),
       };
+    case "email": {
+      const first = pick(rand, FIRST_NAMES).toLowerCase();
+      const last = pick(rand, LAST_NAMES).toLowerCase();
+      return {
+        questionId: question.id,
+        value: `${first}.${last}${randomInt(rand, 1, 999)}@example.com`,
+      };
+    }
+    case "number":
+      return {
+        questionId: question.id,
+        value: generateNumericAnswer(rand, config, 0, 100),
+      };
     case "single_choice":
     case "dropdown": {
       const options = config.options ?? [];
       return {
         questionId: question.id,
-        value: pick(rand, options),
+        value: options.length > 0 ? pick(rand, options) : "",
       };
     }
     case "multiple_choice": {
       const options = config.options ?? [];
+      if (options.length === 0) {
+        return { questionId: question.id, value: [] };
+      }
       const count = randomInt(rand, 1, Math.min(3, options.length));
       return {
         questionId: question.id,
         value: pickMultiple(rand, options, count),
       };
     }
+    case "ranking": {
+      return {
+        questionId: question.id,
+        value: shuffle(rand, config.options ?? []),
+      };
+    }
+    case "matrix": {
+      const rows = config.rows ?? [];
+      const columns = config.columns ?? [];
+      const value: Record<string, string> = {};
+      if (columns.length > 0) {
+        for (const row of rows) value[row] = pick(rand, columns);
+      }
+      return { questionId: question.id, value };
+    }
+    case "slider": {
+      return {
+        questionId: question.id,
+        value: generateNumericAnswer(rand, config, 0, 10),
+      };
+    }
+    case "rating":
+      return {
+        questionId: question.id,
+        value: randomInt(rand, LIMITS.ratingMin, LIMITS.ratingMax),
+      };
+    case "nps":
+      return {
+        questionId: question.id,
+        value: randomInt(rand, LIMITS.npsMin, LIMITS.npsMax),
+      };
     case "linear_scale": {
       const min = config.min ?? 1;
       const max = config.max ?? 5;
@@ -189,7 +261,11 @@ export async function generateSyntheticDataset(
         })
         .returning({ id: demoResponses.id });
 
-      const answers: Array<{ demoResponseId: string; questionId: string; value: string | number | boolean | string[] }> = [];
+      const answers: Array<{
+        demoResponseId: string;
+        questionId: string;
+        value: GeneratedValue;
+      }> = [];
       for (const question of questionRows) {
         const gen = generateAnswerForQuestion(rand, question);
         answers.push({

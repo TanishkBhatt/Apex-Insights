@@ -3,6 +3,8 @@ import {
   computeAnalytics,
   computeQuestionStats,
   computeTimeline,
+  daysForRange,
+  filterRowsByRange,
   tokenizeText,
 } from "@/lib/analytics/compute";
 
@@ -83,12 +85,123 @@ describe("computeQuestionStats", () => {
     expect(no?.percentage).toBe(25);
   });
 
+  it("computes numeric stats and a histogram", () => {
+    const stats = computeQuestionStats("number", [10, 12, 12, 14, 20, null]);
+    expect(stats.kind).toBe("number");
+    if (stats.kind !== "number") return;
+    expect(stats.answered).toBe(5);
+    expect(stats.unanswered).toBe(1);
+    expect(stats.mean).toBe(13.6);
+    expect(stats.median).toBe(12);
+    expect(stats.min).toBe(10);
+    expect(stats.max).toBe(20);
+    expect(stats.points.length).toBeGreaterThan(0);
+  });
+
+  it("computes NPS promoters, passives and detractors", () => {
+    const stats = computeQuestionStats("nps", [10, 9, 8, 7, 6, 5, null]);
+    expect(stats.kind).toBe("nps");
+    if (stats.kind !== "nps") return;
+    expect(stats.answered).toBe(6);
+    expect(stats.promoters).toBe(2);
+    expect(stats.passives).toBe(2);
+    expect(stats.detractors).toBe(2);
+    expect(stats.score).toBe(0);
+    expect(stats.points).toHaveLength(11);
+  });
+
+  it("computes email domains and unique addresses", () => {
+    const stats = computeQuestionStats("email", [
+      "ada@example.com",
+      "grace@navy.mil",
+      "ada@school.edu",
+      null,
+    ]);
+    expect(stats.kind).toBe("email");
+    if (stats.kind !== "email") return;
+    expect(stats.answered).toBe(3);
+    expect(stats.unique).toBe(3);
+    expect(stats.domains.map((domain) => domain.label).sort()).toEqual([
+      "example.com",
+      "navy.mil",
+      "school.edu",
+    ]);
+  });
+
+  it("computes ranking averages and first-place counts", () => {
+    const stats = computeQuestionStats(
+      "ranking",
+      [
+        ["A", "B", "C"],
+        ["B", "A", "C"],
+      ],
+      { options: ["A", "B", "C"] },
+    );
+    expect(stats.kind).toBe("ranking");
+    if (stats.kind !== "ranking") return;
+    expect(stats.items.find((item) => item.label === "A")).toMatchObject({
+      averageRank: 1.5,
+      firstPlace: 1,
+    });
+    expect(stats.items.find((item) => item.label === "B")).toMatchObject({
+      averageRank: 1.5,
+      firstPlace: 1,
+    });
+    expect(stats.items.find((item) => item.label === "C")).toMatchObject({
+      averageRank: 3,
+      firstPlace: 0,
+    });
+  });
+
+  it("computes matrix percentages per row", () => {
+    const stats = computeQuestionStats(
+      "matrix",
+      [
+        { R1: "Good", R2: "Bad" },
+        { R1: "Good" },
+      ],
+      { rows: ["R1", "R2"], columns: ["Good", "Bad"] },
+    );
+    expect(stats.kind).toBe("matrix");
+    if (stats.kind !== "matrix") return;
+    const r1 = stats.rows.find((row) => row.label === "R1");
+    const r2 = stats.rows.find((row) => row.label === "R2");
+    expect(r1?.points.find((point) => point.label === "Good")).toMatchObject({
+      count: 2,
+      percentage: 100,
+    });
+    expect(r2?.points.find((point) => point.label === "Bad")).toMatchObject({
+      count: 1,
+      percentage: 100,
+    });
+  });
+
   it("handles an empty values array", () => {
     const stats = computeQuestionStats("linear_scale", []);
     expect(stats.kind).toBe("scale");
     if (stats.kind !== "scale") return;
     expect(stats.mean).toBeNull();
     expect(stats.answered).toBe(0);
+  });
+});
+
+describe("date ranges", () => {
+  it("maps presets to day counts", () => {
+    expect(daysForRange("7")).toBe(7);
+    expect(daysForRange("30")).toBe(30);
+    expect(daysForRange("90")).toBe(90);
+    expect(daysForRange("all")).toBeNull();
+  });
+
+  it("filters rows to the selected range", () => {
+    const now = new Date("2026-03-10T12:00:00Z");
+    const rows = [
+      { submittedAt: new Date("2026-03-01T12:00:00Z"), answers: [] },
+      { submittedAt: new Date("2026-03-04T12:00:00Z"), answers: [] },
+      { submittedAt: new Date("2026-03-10T08:00:00Z"), answers: [] },
+    ];
+    expect(filterRowsByRange(rows, "7", now)).toHaveLength(2);
+    expect(filterRowsByRange(rows, "all", now)).toHaveLength(3);
   });
 });
 

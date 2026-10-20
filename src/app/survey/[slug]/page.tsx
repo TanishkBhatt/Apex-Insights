@@ -1,10 +1,14 @@
 import { notFound } from "next/navigation";
-import { CheckCircle2 } from "lucide-react";
+import { CheckCircle2, Lock } from "lucide-react";
 import { Logo } from "@/components/logo";
 import { PublicSurveyForm } from "@/components/public/public-survey-form";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Card, CardBody } from "@/components/ui/card";
-import { getPublishedSurveyBySlug } from "@/lib/surveys/service";
+import {
+  countSurveyResponses,
+  getPublishedSurveyBySlug,
+} from "@/lib/surveys/service";
+import { isAcceptingResponses } from "@/lib/surveys/lifecycle";
 
 export const metadata = { title: "Survey" };
 
@@ -37,9 +41,37 @@ export default async function PublicSurveyPage({
             </span>
             <div>
               <h1 className="text-xl font-semibold text-slate-900">Thank you</h1>
-              <p className="mt-1 text-sm text-slate-600">Your response has been submitted successfully.</p>
+              <p className="mt-1 whitespace-pre-line text-sm text-slate-600">
+                {survey.thankYouMessage ||
+                  "Your response has been submitted successfully."}
+              </p>
             </div>
             <p className="text-xs text-slate-500">You may close this window.</p>
+          </CardBody>
+        </Card>
+      </main>
+    );
+  }
+
+  const responseCount = await countSurveyResponses(survey.id);
+  if (!isAcceptingResponses(survey, responseCount)) {
+    return (
+      <main className="relative mx-auto flex min-h-screen max-w-2xl flex-col items-center justify-center px-4 py-10">
+        <div className="absolute top-4 right-4">
+          <ThemeToggle />
+        </div>
+        <Logo heightClass="mb-6 h-8" />
+        <Card className="w-full">
+          <CardBody className="flex flex-col items-center gap-4 py-10 text-center">
+            <span className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-100">
+              <Lock className="h-6 w-6 text-slate-500" aria-hidden />
+            </span>
+            <div>
+              <h1 className="text-xl font-semibold text-slate-900">This survey is closed</h1>
+              <p className="mt-1 text-sm text-slate-600">
+                It is no longer accepting responses. Thanks for your interest.
+              </p>
+            </div>
           </CardBody>
         </Card>
       </main>

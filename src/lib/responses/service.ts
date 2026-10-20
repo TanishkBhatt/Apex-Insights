@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, inArray } from "drizzle-orm";
+import { and, asc, count, desc, eq, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
 import {
@@ -11,6 +11,7 @@ import {
 } from "@/db/schema";
 import { validateAnswer } from "@/lib/validation/answers";
 import { LIMITS } from "@/lib/validation/survey";
+import { isAcceptingResponses } from "@/lib/surveys/lifecycle";
 
 export class SubmissionError extends Error {
   readonly status: number;
@@ -50,13 +51,18 @@ export async function submitPublicResponse(payload: unknown, slug: string): Prom
   }
 
   const [survey] = await db
-    .select({ id: surveys.id, status: surveys.status })
+    .select({
+      id: surveys.id,
+      status: surveys.status,
+      closesAt: surveys.closesAt,
+      maxResponses: surveys.maxResponses,
+    })
     .from(surveys)
     .where(eq(surveys.slug, slug))
     .limit(1);
 
   if (!survey) throw new SubmissionError("Survey not found.", 404);
-  if (survey.status !== "published") {
+  if (!isAcceptingResponses(survey, 0)) {
     throw new SubmissionError("This survey is not accepting responses.", 403);
   }
 
@@ -101,6 +107,28 @@ export async function submitPublicResponse(payload: unknown, slug: string): Prom
   }
 
   const responseId = await db.transaction(async (tx) => {
+    const [locked] = await tx
+      .select({
+        status: surveys.status,
+        closesAt: surveys.closesAt,
+        maxResponses: surveys.maxResponses,
+      })
+      .from(surveys)
+      .where(eq(surveys.id, survey.id))
+      .for("update")
+      .limit(1);
+
+    if (!locked) throw new SubmissionError("Survey not found.", 404);
+
+    const [countRow] = await tx
+      .select({ value: count() })
+      .from(responses)
+      .where(eq(responses.surveyId, survey.id));
+
+    if (!isAcceptingResponses(locked, Number(countRow?.value ?? 0))) {
+      throw new SubmissionError("This survey is not accepting responses.", 403);
+    }
+
     const [response] = await tx
       .insert(responses)
       .values({ surveyId: survey.id })
@@ -141,6 +169,7 @@ export async function listResponsesForOwner(
   ownerId: string,
   surveyId: string,
   limit = 200,
+  options: { offset?: number; search?: string } = {},
 ): Promise<{ responses: ResponseView[]; total: number } | null> {
   const [survey] = await db
     .select({ id: surveys.id })
@@ -150,10 +179,33 @@ export async function listResponsesForOwner(
 
   if (!survey) return null;
 
+  const search = options.search?.trim().slice(0, 200) ?? "";
+  let matchingIds: string[] | null = null;
+  if (search) {
+    const escaped = search.replace(/[\\%_]/g, "\\$&");
+    const matches = await db
+      .selectDistinct({ id: answers.responseId })
+      .from(answers)
+      .innerJoin(responses, eq(responses.id, answers.responseId))
+      .where(
+        and(
+          eq(responses.surveyId, surveyId),
+          sql`${answers.value}::text ILIKE ${`%${escaped}%`}`,
+        ),
+      );
+    matchingIds = matches.map((row) => row.id);
+    if (matchingIds.length === 0) return { responses: [], total: 0 };
+  }
+
+  const responseFilter = and(
+    eq(responses.surveyId, surveyId),
+    matchingIds ? inArray(responses.id, matchingIds) : undefined,
+  );
+
   const [totalRow] = await db
     .select({ value: count() })
     .from(responses)
-    .where(eq(responses.surveyId, surveyId));
+    .where(responseFilter);
 
   const questionRows = await db
     .select({
@@ -169,9 +221,10 @@ export async function listResponsesForOwner(
   const responseRows = await db
     .select({ id: responses.id, submittedAt: responses.submittedAt })
     .from(responses)
-    .where(eq(responses.surveyId, surveyId))
+    .where(responseFilter)
     .orderBy(desc(responses.submittedAt))
-    .limit(limit);
+    .limit(limit)
+    .offset(Math.max(0, options.offset ?? 0));
 
   if (responseRows.length === 0) {
     return { responses: [], total: Number(totalRow?.value ?? 0) };
@@ -214,6 +267,74 @@ export async function listResponsesForOwner(
       };
     }),
   };
+}
+
+export async function getResponseForOwner(
+  ownerId: string,
+  surveyId: string,
+  responseId: string,
+): Promise<ResponseView | null> {
+  const [survey] = await db
+    .select({ id: surveys.id })
+    .from(surveys)
+    .where(and(eq(surveys.id, surveyId), eq(surveys.ownerId, ownerId)))
+    .limit(1);
+  if (!survey) return null;
+
+  const [response] = await db
+    .select({ id: responses.id, submittedAt: responses.submittedAt })
+    .from(responses)
+    .where(and(eq(responses.id, responseId), eq(responses.surveyId, surveyId)))
+    .limit(1);
+  if (!response) return null;
+
+  const questionRows = await db
+    .select({
+      id: questions.id,
+      title: questions.title,
+      type: questions.type,
+      position: questions.position,
+    })
+    .from(questions)
+    .where(eq(questions.surveyId, surveyId))
+    .orderBy(asc(questions.position));
+
+  const answerRows = await db
+    .select({ questionId: answers.questionId, value: answers.value })
+    .from(answers)
+    .where(eq(answers.responseId, responseId));
+  const answerMap = new Map(answerRows.map((answer) => [answer.questionId, answer.value]));
+
+  return {
+    id: response.id,
+    submittedAt: response.submittedAt,
+    answers: questionRows.map((question) => ({
+      questionId: question.id,
+      questionTitle: question.title,
+      type: question.type,
+      value: answerMap.get(question.id) ?? null,
+    })),
+  };
+}
+
+export async function deleteResponseForOwner(
+  ownerId: string,
+  surveyId: string,
+  responseId: string,
+): Promise<boolean> {
+  const [survey] = await db
+    .select({ id: surveys.id })
+    .from(surveys)
+    .where(and(eq(surveys.id, surveyId), eq(surveys.ownerId, ownerId)))
+    .limit(1);
+  if (!survey) return false;
+
+  const deleted = await db
+    .delete(responses)
+    .where(and(eq(responses.id, responseId), eq(responses.surveyId, surveyId)))
+    .returning({ id: responses.id });
+
+  return deleted.length > 0;
 }
 
 export async function countRealResponsesForOwner(

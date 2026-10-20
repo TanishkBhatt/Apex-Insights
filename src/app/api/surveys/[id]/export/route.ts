@@ -2,12 +2,15 @@ import { NextResponse } from "next/server";
 import { loadAnalytics, type AnalyticsSource } from "@/lib/analytics/load";
 import { getSessionUser } from "@/lib/session";
 import {
+  attachmentDisposition,
   buildResponsesCsv,
   buildResponsesJson,
   contentDispositionFilename,
+  zipFilename,
 } from "@/lib/exports/formatters";
+import { buildSurveyExportZip } from "@/lib/exports/zip";
 
-const VALID_FORMATS = ["csv", "json"] as const;
+const VALID_FORMATS = ["csv", "json", "zip"] as const;
 const VALID_SOURCES: AnalyticsSource[] = ["real", "demo", "both"];
 const UUID_RE = /^[0-9a-f-]{36}$/i;
 
@@ -36,7 +39,7 @@ export async function GET(
     : null;
   if (!format) {
     return NextResponse.json(
-      { error: "Unsupported format. Use csv or json." },
+      { error: "Unsupported format. Use csv, json or zip." },
       { status: 400 },
     );
   }
@@ -50,8 +53,31 @@ export async function GET(
     return NextResponse.json({ error: "Survey not found" }, { status: 404 });
   }
 
+  if (format === "zip") {
+    const { bytes } = await buildSurveyExportZip({
+      survey: data.survey,
+      questions: data.questions,
+      rows: data.rows,
+      source,
+    });
+
+    const body = bytes.buffer.slice(
+      bytes.byteOffset,
+      bytes.byteOffset + bytes.byteLength,
+    ) as ArrayBuffer;
+
+    return new Response(body, {
+      headers: {
+        "Content-Type": "application/zip",
+        "Content-Disposition": attachmentDisposition(zipFilename(data.survey.title)),
+        "Content-Length": String(bytes.byteLength),
+        "Cache-Control": "no-store",
+      },
+    });
+  }
+
   const filename = contentDispositionFilename(data.survey.title, source, format);
-  const disposition = `attachment; filename="${filename}"`;
+  const disposition = attachmentDisposition(filename);
 
   if (format === "csv") {
     const csv = buildResponsesCsv(data.questions, data.rows, source);

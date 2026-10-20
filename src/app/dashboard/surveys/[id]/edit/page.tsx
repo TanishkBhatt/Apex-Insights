@@ -36,6 +36,7 @@ export default async function EditSurveyPage({
 
       <SurveyStatusBar
         surveyId={survey.id}
+        title={survey.title}
         status={survey.status}
         publicUrl={publicSurveyUrl(survey.slug)}
       />

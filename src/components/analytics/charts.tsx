@@ -169,8 +169,22 @@ export function ScaleBarChart({
   max?: number | null;
 }) {
   const palette = useChartPalette();
+  const numericPoints = points.every((point) => Number.isFinite(Number(point.label)));
   const filled = (() => {
-    if (min === null || min === undefined || max === null || max === undefined) return points;
+    if (
+      min === null ||
+      min === undefined ||
+      max === null ||
+      max === undefined ||
+      !numericPoints ||
+      !Number.isInteger(min) ||
+      !Number.isInteger(max) ||
+      max - min > 20
+    ) {
+      return numericPoints
+        ? [...points].sort((a, b) => Number(a.label) - Number(b.label))
+        : points;
+    }
     const byLabel = new Map(points.map((point) => [point.label, point]));
     const list: DistributionPoint[] = [];
     for (let value = min; value <= max; value += 1) {

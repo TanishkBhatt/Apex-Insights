@@ -2,14 +2,25 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Check, Copy, ExternalLink, Loader2, Lock, Send, Trash2 } from "lucide-react";
+import {
+  Check,
+  Copy,
+  CopyPlus,
+  ExternalLink,
+  Loader2,
+  Lock,
+  Send,
+  Trash2,
+} from "lucide-react";
 import {
   deleteSurveyAction,
+  duplicateSurveyAction,
   setSurveyStatusAction,
   type ActionState,
 } from "@/app/dashboard/surveys/actions";
 import { Alert, Badge } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { ShareSurveyButton } from "@/components/surveys/share-survey-dialog";
 import type { SurveyStatus } from "@/db/schema";
 
 const statusTone = {
@@ -30,15 +41,19 @@ export function StatusBadge({ status }: { status: SurveyStatus }) {
 
 export function SurveyStatusBar({
   surveyId,
+  title,
   status,
   publicUrl,
 }: {
   surveyId: string;
+  title: string;
   status: SurveyStatus;
   publicUrl: string;
 }) {
   const router = useRouter();
-  const [pending, setPending] = useState<"publish" | "close" | "delete" | null>(null);
+  const [pending, setPending] = useState<
+    "publish" | "close" | "delete" | "duplicate" | null
+  >(null);
   const [result, setResult] = useState<ActionState | null>(null);
   const [copied, setCopied] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -106,6 +121,7 @@ export function SurveyStatusBar({
               )}
               {copied ? "Copied" : "Copy link"}
             </Button>
+            <ShareSurveyButton publicUrl={publicUrl} title={title} />
             <Button
               variant="outline"
               size="sm"
@@ -137,7 +153,33 @@ export function SurveyStatusBar({
           </Button>
         ) : null}
 
-        <div className="ml-auto">
+        <div className="ml-auto flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={pending !== null}
+            onClick={async () => {
+              setPending("duplicate");
+              setResult(null);
+              try {
+                const response = await duplicateSurveyAction(surveyId);
+                setResult(response);
+                if (response.ok && response.surveyId) {
+                  router.push(`/dashboard/surveys/${response.surveyId}/edit`);
+                  router.refresh();
+                }
+              } finally {
+                setPending(null);
+              }
+            }}
+          >
+            {pending === "duplicate" ? (
+              <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+            ) : (
+              <CopyPlus className="h-4 w-4" aria-hidden />
+            )}
+            Duplicate
+          </Button>
           {confirmDelete ? (
             <span className="flex items-center gap-2">
               <span className="text-sm text-slate-600">Delete this survey?</span>

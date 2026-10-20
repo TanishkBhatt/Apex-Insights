@@ -1,15 +1,5 @@
-import { Download, FileJson, Table } from "lucide-react";
+import { Download } from "lucide-react";
 import type { AnalyticsSource } from "@/lib/analytics/load";
-import type { ComponentType, SVGProps } from "react";
-
-const FORMATS: Array<{
-  format: "csv" | "json";
-  label: string;
-  icon: ComponentType<SVGProps<SVGSVGElement>>;
-}> = [
-  { format: "csv", label: "CSV", icon: Table },
-  { format: "json", label: "JSON", icon: FileJson },
-];
 
 export function ExportButtons({
   surveyId,
@@ -19,22 +9,15 @@ export function ExportButtons({
   source: AnalyticsSource;
 }) {
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      <span className="inline-flex items-center gap-1 text-xs font-medium uppercase tracking-wide text-slate-500">
-        <Download className="h-3.5 w-3.5" aria-hidden />
-        Export
-      </span>
-      {FORMATS.map(({ format, label, icon: Icon }) => (
-        <a
-          key={format}
-          href={`/api/surveys/${surveyId}/export?format=${format}&source=${source}`}
-          download
-          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-surface px-2.5 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-        >
-          <Icon className="h-3.5 w-3.5" aria-hidden />
-          {label}
-        </a>
-      ))}
-    </div>
+    <a
+      href={`/api/surveys/${surveyId}/export?format=zip&source=${source}`}
+      download
+      className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-surface px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+      title="Download a ZIP with responses.csv and responses.json"
+    >
+      <Download className="h-4 w-4" aria-hidden />
+      Export
+      <span className="text-xs font-normal text-slate-500">.zip</span>
+    </a>
   );
 }
