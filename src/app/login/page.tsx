@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { AuthForm } from "@/components/auth-form";
 import { Logo } from "@/components/logo";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { Card, CardBody } from "@/components/ui/card";
 import { getSessionUser } from "@/lib/session";
 
@@ -11,7 +12,10 @@ export default async function LoginPage() {
   if (await getSessionUser()) redirect("/dashboard");
 
   return (
-    <main className="flex min-h-screen items-center justify-center px-4 py-12">
+    <main className="relative flex min-h-screen items-center justify-center px-4 py-12">
+      <div className="absolute top-4 right-4">
+        <ThemeToggle />
+      </div>
       <div className="w-full max-w-md">
         <div className="mb-6 flex flex-col items-center text-center">
           <Logo heightClass="h-10" />

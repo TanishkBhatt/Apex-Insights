@@ -565,7 +565,7 @@ export function DashboardBoard({
           icon={FileText}
           iconClass="bg-indigo-50 text-indigo-600"
           series={activity.surveysSeries}
-          tone="#c2410c"
+          tone="#6366f1"
           detail={`${activity.surveysRecent} new in ${activity.days} days`}
         />
         <StatCard
@@ -582,9 +582,9 @@ export function DashboardBoard({
           label="Demo datasets"
           value={totalDemo}
           icon={Database}
-          iconClass="bg-amber-50 text-amber-700"
+          iconClass="bg-violet-50 text-violet-600"
           series={activity.demoSeries}
-          tone="#d97706"
+          tone="#7c3aed"
           detail={`${activity.demoRecent} new in ${activity.days} days`}
         />
       </div>

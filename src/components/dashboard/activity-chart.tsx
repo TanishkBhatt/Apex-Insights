@@ -10,6 +10,7 @@ import {
   YAxis,
 } from "recharts";
 import type { DailyActivityPoint } from "@/lib/dashboard/activity-shared";
+import { useIsDark } from "@/lib/use-is-dark";
 
 function formatDay(date: string): string {
   const parsed = new Date(`${date}T00:00:00Z`);
@@ -26,9 +27,10 @@ export function DashboardActivityChart({
 }: {
   points: DailyActivityPoint[];
 }) {
-  const primary = "#c2410c";
-  const grid = "#e9ded2";
-  const tick = "#806c5a";
+  const dark = useIsDark();
+  const primary = dark ? "#fe6e00" : "#ea580c";
+  const grid = dark ? "#2e2e2e" : "#e5e5e5";
+  const tick = dark ? "#9c9c9c" : "#737373";
   const total = points.reduce((sum, point) => sum + point.count, 0);
 
   if (total === 0) {
@@ -67,10 +69,10 @@ export function DashboardActivityChart({
           />
           <Tooltip
             contentStyle={{
-              backgroundColor: "#ffffff",
-              border: "1px solid #e9ded2",
+              backgroundColor: dark ? "#1f1f1f" : "#ffffff",
+              border: `1px solid ${dark ? "#3a3a3a" : "#e5e5e5"}`,
               borderRadius: "0.5rem",
-              color: "#2b231d",
+              color: dark ? "#f5f5f5" : "#262626",
               fontSize: 12,
             }}
             labelFormatter={(value) => formatDay(String(value))}
