@@ -22,15 +22,7 @@ export function Logo({
         alt="Apex Insights"
         width={669}
         height={168}
-        className={cn(heightClass, "w-auto dark:hidden", className)}
-      />
-      <Image
-        src="/logo-light.png"
-        alt=""
-        aria-hidden
-        width={669}
-        height={168}
-        className={cn("hidden", heightClass, "w-auto dark:block", className)}
+        className={cn(heightClass, "w-auto", className)}
       />
     </Link>
   );

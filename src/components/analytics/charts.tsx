@@ -15,28 +15,16 @@ import {
   YAxis,
 } from "recharts";
 import type { DistributionPoint, TimelinePoint } from "@/lib/analytics/compute";
-import { useIsDark } from "@/lib/use-is-dark";
 
-const DARK_COLORS = [
-  "#fe6e00",
-  "#ffb96d",
-  "#f5a524",
-  "#d4d4d4",
-  "#8a8a8a",
-  "#7b3306",
-  "#ffd7a8",
-  "#874b00",
-];
-
-const LIGHT_COLORS = [
+const CHART_COLORS = [
+  "#c2410c",
   "#ea580c",
   "#f97316",
   "#fb923c",
-  "#fdba74",
-  "#f5a524",
+  "#d97706",
   "#a16207",
-  "#d4d4d4",
-  "#737373",
+  "#c9b8a6",
+  "#806c5a",
 ];
 
 type Palette = {
@@ -53,44 +41,26 @@ type Palette = {
   tooltipText: string;
 };
 
-const DARK_PALETTE: Palette = {
-  colors: DARK_COLORS,
-  primary: "#fe6e00",
-  grid: "#2e2e2e",
-  tick: "#9c9c9c",
-  tooltip: {
-    backgroundColor: "#1f1f1f",
-    border: "1px solid #3a3a3a",
-    borderRadius: "0.5rem",
-    color: "#f5f5f5",
-  },
-  tooltipText: "#f5f5f5",
-};
-
-const LIGHT_PALETTE: Palette = {
-  colors: LIGHT_COLORS,
-  primary: "#ea580c",
-  grid: "#e5e5e5",
-  tick: "#737373",
+const PALETTE: Palette = {
+  colors: CHART_COLORS,
+  primary: "#c2410c",
+  grid: "#e9ded2",
+  tick: "#806c5a",
   tooltip: {
     backgroundColor: "#ffffff",
-    border: "1px solid #e5e5e5",
+    border: "1px solid #e9ded2",
     borderRadius: "0.5rem",
-    color: "#262626",
+    color: "#2b231d",
   },
-  tooltipText: "#262626",
+  tooltipText: "#2b231d",
 };
-
-function useChartPalette(): Palette {
-  return useIsDark() ? DARK_PALETTE : LIGHT_PALETTE;
-}
 
 function truncate(label: string, max = 22): string {
   return label.length > max ? `${label.slice(0, max - 1)}…` : label;
 }
 
 export function DistributionBarChart({ points }: { points: DistributionPoint[] }) {
-  const palette = useChartPalette();
+  const palette = PALETTE;
   return (
     <div className="h-72 w-full">
       <ResponsiveContainer width="100%" height="100%">
@@ -127,7 +97,7 @@ export function DistributionBarChart({ points }: { points: DistributionPoint[] }
 }
 
 export function DistributionDonutChart({ points }: { points: DistributionPoint[] }) {
-  const palette = useChartPalette();
+  const palette = PALETTE;
   return (
     <div className="h-72 w-full">
       <ResponsiveContainer width="100%" height="100%">
@@ -168,7 +138,7 @@ export function ScaleBarChart({
   min?: number | null;
   max?: number | null;
 }) {
-  const palette = useChartPalette();
+  const palette = PALETTE;
   const numericPoints = points.every((point) => Number.isFinite(Number(point.label)));
   const filled = (() => {
     if (
@@ -215,7 +185,7 @@ export function ScaleBarChart({
 }
 
 export function SubmissionsTimelineChart({ points }: { points: TimelinePoint[] }) {
-  const palette = useChartPalette();
+  const palette = PALETTE;
   if (points.length === 0) {
     return (
       <p className="py-8 text-center text-sm text-slate-500">

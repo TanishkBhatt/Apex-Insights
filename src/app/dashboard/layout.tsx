@@ -2,7 +2,6 @@ import Link from "next/link";
 import { LayoutDashboard, Plus, Settings } from "lucide-react";
 import { Logo } from "@/components/logo";
 import { SignOutButton } from "@/components/sign-out-button";
-import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
 import { UserAvatar } from "@/components/user-avatar";
 import { requireUser } from "@/lib/session";
@@ -61,7 +60,6 @@ export default async function DashboardLayout({
                 <span className="block text-xs text-slate-500">{user.email}</span>
               </span>
             </Link>
-            <ThemeToggle />
             <SignOutButton />
           </div>
         </div>

@@ -1,120 +1,63 @@
 @import "tailwindcss";
 
-@custom-variant dark (&:where(.dark, .dark *));
-
 /*
- * Apex Insights theme — orange primary with charcoal greys.
+ * Apex Insights theme — a single, professional light palette.
  *
- * Light palette follows the chaicode.com light tokens (white background,
- * near-black foreground, #f7f7f7 muted surfaces, #e5e5e5 borders) plus the
- * orange brand scale. The dark palette keeps the charcoal look (#0a0a0a page,
- * #171717 surfaces, #fe6e00 orange).
- *
- * Palettes are defined as plain CSS variables per theme and exposed to
- * Tailwind via `@theme inline`, so semantic class names (bg-slate-50,
- * text-indigo-600, …) switch at runtime with the `.dark` class.
+ * The interface uses warm off-white neutrals with a burnt-orange accent.
+ * Semantic `indigo-*` utility classes intentionally map to the orange brand
+ * scale so existing components stay consistent without renaming every class.
  */
 
 :root {
   color-scheme: light;
 
-  --page-bg: #ffffff;
-  --page-fg: #262626;
+  --page-bg: #faf7f2;
+  --page-fg: #2b231d;
   --surface: #ffffff;
 
-  /* Neutral (slate) scale — chaicode light greys */
-  --slate-50: #f7f7f7;
-  --slate-100: #f0f0f0;
-  --slate-200: #e5e5e5;
-  --slate-300: #d4d4d4;
-  --slate-400: #a3a3a3;
-  --slate-500: #737373;
-  --slate-600: #525252;
-  --slate-700: #404040;
-  --slate-800: #2e2e2e;
-  --slate-900: #262626;
+  /* Warm neutral (slate) scale */
+  --slate-50: #faf7f3;
+  --slate-100: #f5efe8;
+  --slate-200: #e9ded2;
+  --slate-300: #d8c9b9;
+  --slate-400: #ab9986;
+  --slate-500: #806c5a;
+  --slate-600: #635145;
+  --slate-700: #4d3e34;
+  --slate-800: #392e27;
+  --slate-900: #261f1a;
 
-  /* Primary (indigo) scale — orange brand */
-  --indigo-50: #fff7ed;
-  --indigo-100: #ffedd5;
-  --indigo-200: #fed7aa;
-  --indigo-300: #fdba74;
+  /* Primary (indigo) slots — burnt-orange brand */
+  --indigo-50: #fff6ed;
+  --indigo-100: #ffead6;
+  --indigo-200: #ffd3ad;
+  --indigo-300: #ffb273;
   --indigo-400: #fb923c;
-  --indigo-500: #f97316;
-  --indigo-600: #ea580c;
-  --indigo-700: #c2410c;
+  --indigo-500: #ea580c;
+  --indigo-600: #c2410c;
+  --indigo-700: #9a3412;
 
   /* Feedback tones */
-  --emerald-50: #ecfdf5;
-  --emerald-200: #a7f3d0;
-  --emerald-600: #059669;
-  --emerald-700: #047857;
+  --emerald-50: #eefaf3;
+  --emerald-200: #b7ebd0;
+  --emerald-600: #0f8a5f;
+  --emerald-700: #0b6e4d;
 
-  --amber-50: #fffbeb;
-  --amber-200: #fde68a;
-  --amber-700: #b45309;
-  --amber-800: #92400e;
+  --amber-50: #fff8e8;
+  --amber-200: #fbe0a6;
+  --amber-700: #a16207;
+  --amber-800: #854d0e;
 
-  --red-50: #fef2f2;
-  --red-200: #fecaca;
+  --red-50: #fef3f2;
+  --red-200: #fecdc9;
   --red-300: #fca5a5;
   --red-600: #dc2626;
   --red-700: #b91c1c;
 
-  --violet-50: #f5f3ff;
-  --violet-200: #ddd6fe;
+  --violet-50: #f6f2ff;
+  --violet-200: #ddd0fe;
+  --violet-600: #7c3aed;
   --violet-700: #6d28d9;
-}
-
-.dark {
-  color-scheme: dark;
-
-  --page-bg: #0a0a0a;
-  --page-fg: #f5f5f5;
-  --surface: #171717;
-
-  /* Neutral (slate) scale — dark charcoal greys */
-  --slate-50: #1e1e1e;
-  --slate-100: #252525;
-  --slate-200: #2a2a2a;
-  --slate-300: #3a3a3a;
-  --slate-400: #6f6f6f;
-  --slate-500: #9c9c9c;
-  --slate-600: #b5b5b5;
-  --slate-700: #d4d4d4;
-  --slate-800: #e5e5e5;
-  --slate-900: #f5f5f5;
-
-  /* Primary (indigo) scale — chaicode orange */
-  --indigo-50: #2a1a0d;
-  --indigo-100: #3a2410;
-  --indigo-200: #8a4b17;
-  --indigo-300: #6b3a12;
-  --indigo-400: #ff9a3d;
-  --indigo-500: #fe6e00;
-  --indigo-600: #fe6e00;
-  --indigo-700: #ff7d0c;
-
-  /* Feedback tones tuned for dark surfaces */
-  --emerald-50: #0e2117;
-  --emerald-200: #1f5a3a;
-  --emerald-600: #34d399;
-  --emerald-700: #6ee7b7;
-
-  --amber-50: #291c0a;
-  --amber-200: #6b4a10;
-  --amber-700: #fbbf24;
-  --amber-800: #fcd34d;
-
-  --red-50: #2a1216;
-  --red-200: #7f2a30;
-  --red-300: #5a2a2e;
-  --red-600: #e5484d;
-  --red-700: #f87171;
-
-  --violet-50: #211430;
-  --violet-200: #5b3a8a;
-  --violet-700: #c4b5fd;
 }
 
 @theme inline {
@@ -163,6 +106,7 @@
 
   --color-violet-50: var(--violet-50);
   --color-violet-200: var(--violet-200);
+  --color-violet-600: var(--violet-600);
   --color-violet-700: var(--violet-700);
 }
 
@@ -178,6 +122,15 @@ body {
 
 body {
   background-color: var(--page-bg);
+  background-image:
+    radial-gradient(
+      ellipse 70% 42% at 50% -12%,
+      rgb(249 115 22 / 10%),
+      transparent 65%
+    ),
+    linear-gradient(180deg, rgb(255 252 248 / 90%) 0%, transparent 28rem);
+  background-repeat: no-repeat;
+  background-attachment: fixed;
   color: var(--page-fg);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
@@ -188,7 +141,7 @@ body {
 }
 
 ::selection {
-  background-color: rgb(254 110 0 / 35%);
+  background-color: rgb(234 88 12 / 25%);
 }
 
 @keyframes fade-up {

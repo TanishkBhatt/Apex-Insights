@@ -13,7 +13,6 @@ import { Button } from "@/components/ui/button";
 import { Alert, Card, CardBody } from "@/components/ui/card";
 import { Logo } from "@/components/logo";
 import { InteractiveAnalyticsPreview } from "@/components/landing/interactive-analytics-preview";
-import { ThemeToggle } from "@/components/theme-toggle";
 
 const features = [
   {
@@ -67,7 +66,6 @@ export default async function HomePage({
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
           <Logo heightClass="h-9" />
           <nav className="flex items-center gap-2">
-            <ThemeToggle />
             <Link
               href="/login"
               className="rounded-lg px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900"

@@ -24,8 +24,8 @@ Auth, Zod, and Recharts.
   or exports unless you explicitly include them. Text placeholders stay blank except
   short-text questions that ask for a name, which get a common English name.
 - **Exports** — CSV and JSON downloads for any data source.
-- **Theming** — light and dark themes (chaicode-style orange + charcoal palette) with
-  a header toggle, persisted in `localStorage`.
+- **Theming** — a single professional light theme with warm neutrals and a
+  burnt-orange brand accent, defined with CSS variables in `src/app/globals.css`.
 - **Account settings** — change your username, pick one of six default avatars, or
   permanently delete your account and all of its data after confirming your password.
 
@@ -203,9 +203,8 @@ connection is reused across files. A setup hook warms the connection and the
 
 - **Fonts** — Poppins is self-hosted via `next/font/local` (woff2 files in
   `src/app/fonts/`), so builds succeed without any outbound font fetch.
-- **Theme** — light and dark themes (orange primary, chaicode-style greys) driven by
-  CSS variables in `src/app/globals.css` and toggled with the header button; the
-  choice persists in `localStorage`. Base font size is 103.125%.
+- **Theme** — a single professional light theme (warm greys and burnt orange)
+  driven by CSS variables in `src/app/globals.css`. Base font size is 103.125%.
 - **Rate limiting** — the public-form limiter is in-memory (per-instance). On
   serverless it's per-instance only; move to a shared store (e.g. Upstash Redis) if
   you need a global limit.

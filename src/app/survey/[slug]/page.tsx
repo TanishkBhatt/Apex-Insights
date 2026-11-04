@@ -2,7 +2,6 @@ import { notFound } from "next/navigation";
 import { CheckCircle2, Lock } from "lucide-react";
 import { Logo } from "@/components/logo";
 import { PublicSurveyForm } from "@/components/public/public-survey-form";
-import { ThemeToggle } from "@/components/theme-toggle";
 import { Card, CardBody } from "@/components/ui/card";
 import {
   countSurveyResponses,
@@ -29,10 +28,7 @@ export default async function PublicSurveyPage({
 
   if (isThankYou) {
     return (
-      <main className="relative mx-auto flex min-h-screen max-w-2xl flex-col items-center justify-center px-4 py-10">
-        <div className="absolute top-4 right-4">
-          <ThemeToggle />
-        </div>
+      <main className="mx-auto flex min-h-screen max-w-2xl flex-col items-center justify-center px-4 py-10">
         <Logo heightClass="mb-6 h-8" />
         <Card className="w-full">
           <CardBody className="flex flex-col items-center gap-4 py-10 text-center">
@@ -56,10 +52,7 @@ export default async function PublicSurveyPage({
   const responseCount = await countSurveyResponses(survey.id);
   if (!isAcceptingResponses(survey, responseCount)) {
     return (
-      <main className="relative mx-auto flex min-h-screen max-w-2xl flex-col items-center justify-center px-4 py-10">
-        <div className="absolute top-4 right-4">
-          <ThemeToggle />
-        </div>
+      <main className="mx-auto flex min-h-screen max-w-2xl flex-col items-center justify-center px-4 py-10">
         <Logo heightClass="mb-6 h-8" />
         <Card className="w-full">
           <CardBody className="flex flex-col items-center gap-4 py-10 text-center">
@@ -80,9 +73,8 @@ export default async function PublicSurveyPage({
 
   return (
     <main className="mx-auto max-w-2xl px-4 py-10">
-      <header className="mb-8 flex items-center justify-between gap-2">
+      <header className="mb-8 flex items-center gap-2">
         <Logo heightClass="h-8" />
-        <ThemeToggle />
       </header>
 
       <Card>
