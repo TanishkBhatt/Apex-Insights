@@ -69,11 +69,6 @@ Auth, Zod, and Recharts.
    BETTER_AUTH_URL="http://localhost:3000"
    ```
 
-   Localhost, loopback and private LAN addresses are trusted automatically, so
-   opening the app via `127.0.0.1` or your machine's network IP will not trigger
-   an "Invalid origin" error. Add any other origins as a comma-separated list in
-   `BETTER_AUTH_TRUSTED_ORIGINS`.
-
 4. Create the tables:
 
    ```bash
@@ -191,11 +186,9 @@ connection is reused across files. A setup hook warms the connection and the
    | `DATABASE_URL`        | Postgres connection string (pooled, `sslmode=require`) |
    | `BETTER_AUTH_SECRET`  | `openssl rand -base64 32` — required              |
    | `BETTER_AUTH_URL`     | Your production URL, e.g. `https://apex.vercel.app` |
-   | `BETTER_AUTH_TRUSTED_ORIGINS` | Optional comma-separated extra origins (preview domains, LAN IPs) |
 
    `BETTER_AUTH_URL` must match the deployed origin so session cookies and trusted
-   origins line up. Add any additional deployed origins to
-   `BETTER_AUTH_TRUSTED_ORIGINS`.
+   origins line up.
 
 5. **Apply migrations before/with the first deploy.** Either:
    - run `npm run db:migrate` locally against the production database, or
