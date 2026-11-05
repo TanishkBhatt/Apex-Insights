@@ -5,6 +5,7 @@ import {
   GraduationCap,
   HeartPulse,
   LayoutTemplate,
+  Sparkles,
   Users,
 } from "lucide-react";
 import { SURVEY_TEMPLATES } from "@/lib/surveys/templates";
@@ -33,17 +34,26 @@ export function TemplatePicker({ selectedId }: { selectedId?: string }) {
             Pick a ready-made survey, then tailor the questions before publishing.
           </p>
         </div>
-        <Link
-          href="/dashboard/surveys/new"
-          className={cn(
-            "rounded-lg px-3 py-1.5 text-xs font-medium",
-            selectedId
-              ? "text-indigo-600 hover:bg-indigo-50"
-              : "bg-indigo-50 text-indigo-700",
-          )}
-        >
-          Start from scratch
-        </Link>
+        <div className="flex flex-wrap items-center gap-2">
+          <Link
+            href="/dashboard/surveys/ai"
+            className="inline-flex items-center gap-1 rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs font-medium text-indigo-700 hover:bg-indigo-100"
+          >
+            <Sparkles className="h-3.5 w-3.5" aria-hidden />
+            Generate with AI
+          </Link>
+          <Link
+            href="/dashboard/surveys/new"
+            className={cn(
+              "rounded-lg px-3 py-1.5 text-xs font-medium",
+              selectedId
+                ? "text-indigo-600 hover:bg-indigo-50"
+                : "bg-indigo-50 text-indigo-700",
+            )}
+          >
+            Start from scratch
+          </Link>
+        </div>
       </div>
 
       <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">

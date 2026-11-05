@@ -1,28 +1,34 @@
 # Apex Insights — Survey Made Easy
 
-A full-stack survey application: create surveys, collect real responses through a
-public link, explore analytics, preview synthetic demo data, and export results to
-CSV or JSON.
+A full-stack survey application: create surveys manually, from templates, or with a
+conversational AI builder; collect real responses through a public link; explore
+analytics; generate AI-written synthetic demo data; and export results to CSV or
+JSON.
 
 Built with Next.js (App Router), TypeScript, Drizzle ORM + Neon Postgres, Better
-Auth, Zod, and Recharts.
+Auth, Zod, Google Gemini, and Recharts.
 
 ## Features
 
 - **Auth** — email/password sign-up and sign-in via Better Auth (session cookies,
   httpOnly, sameSite=lax).
-- **Survey builder** — 7 question types (short text, paragraph, single choice,
-  multiple choice, dropdown, linear scale, yes/no) with a drag-free, ordered editor.
+- **Survey builder** — 13 question types (short text, paragraph, number, email,
+  single/multiple choice, dropdown, slider, rating, NPS, ranking, matrix, yes/no)
+  with a drag-free, ordered editor, templates, and optional AI drafting.
+- **AI survey builder** — describe a research goal in natural language, review the
+  generated draft, refine it conversationally, then save it as a normal private
+  draft. Nothing is published automatically.
 - **Lifecycle** — draft → published → closed. Editing is safe after responses exist:
   questions with answers keep their type and existing options can't be removed.
 - **Public form** — shareable `/survey/[slug]` link with validation and a thank-you
   state. Protected by rate limiting and body-size limits.
 - **Analytics** — per-question breakdowns (distributions, scale stats, word clouds,
   yes/no splits), response timeline, and a real/demo/both source toggle.
-- **Demo data** — a deterministic, seeded generator produces synthetic responses
-  stored in a **separate dataset** so they never contaminate real counts, analytics,
-  or exports unless you explicitly include them. Text placeholders stay blank except
-  short-text questions that ask for a name, which get a common English name.
+- **AI demo data** — Gemini writes realistic synthetic responses that follow your
+  exact question types, options and limits. Data lives in a **separate dataset** so
+  it never contaminates real counts, analytics, or exports unless you explicitly
+  include it. Generation is all-or-nothing: failed or invalid AI output is never
+  partially written.
 - **Exports** — CSV and JSON downloads for any data source.
 - **Theming** — light and dark themes (chaicode-style orange + charcoal palette) with
   a header toggle, persisted in `localStorage`.
@@ -38,6 +44,7 @@ Auth, Zod, and Recharts.
 | Database       | Neon Postgres via `postgres` (postgres.js) + Drizzle ORM |
 | Auth           | Better Auth                              |
 | Validation     | Zod                                      |
+| AI             | Google Gemini via `@google/genai`        |
 | Charts         | Recharts                                 |
 | Styling        | Tailwind CSS v4                          |
 | Tests          | Vitest                                   |
@@ -67,7 +74,13 @@ Auth, Zod, and Recharts.
    DATABASE_URL="postgres://user:pass@host/db?sslmode=require"
    BETTER_AUTH_SECRET="<openssl rand -base64 32>"
    BETTER_AUTH_URL="http://localhost:3000"
+   GEMINI_API_KEY="<key from Google AI Studio>"
+   GEMINI_MODEL="gemini-3.6-flash"
    ```
+
+   `GEMINI_API_KEY` enables both AI features. `GEMINI_MODEL` is optional; use a
+   model that is available to your API key. AI keys are server-side only and must
+   never be prefixed with `NEXT_PUBLIC_` or committed.
 
 4. Create the tables:
 
@@ -127,11 +140,24 @@ Real and synthetic data live in separate tables. Every read path (`Responses`,
 `Analytics`, `Exports`) takes an explicit source of `real`, `demo`, or `both`, so the
 two never mix by accident.
 
-### Deterministic demo data
+### AI features
 
-The generator uses a seeded `mulberry32` PRNG (`src/lib/synthetic/prng.ts`). For a
-given `seed` and `count`, the produced dataset is byte-for-byte reproducible, which
-makes analytics and exports demoable and testable without exposing real responses.
+Both AI features are optional and server-side:
+
+- **AI survey builder** (`/dashboard/surveys/ai`) sends the conversation plus the
+  current draft to Gemini, then validates the complete result with the same Zod
+  schema used by manual creation. The client can refine the draft before saving it
+  through the existing draft creation path.
+- **AI demo data** sends the survey's question IDs, types, options and constraints
+  to Gemini in bounded batches. Every generated answer is checked with
+  `validateAnswer`, and the old dataset is replaced transactionally only after all
+  batches validate. Invalid output is retried once and then reported as an error;
+  it never silently falls back to random placeholders.
+
+AI demo generation is capped at 250 responses per run to keep a single serverless
+request within a reasonable duration. Demo datasets still live in their own tables
+and remain excluded from real-response reads unless a source explicitly includes
+them.
 
 ### Analytics & exports
 
@@ -163,6 +189,9 @@ connection is reused across files. A setup hook warms the connection and the
   authenticated owner (`404` for non-owners, `307 → /login` for anonymous).
 - The public submission endpoint validates the slug, enforces a 256 KB body cap, a
   per-IP rate limit (20/min), and an answer-count cap.
+- AI server actions require an authenticated owner, validate conversations with
+  Zod, and validate all model output before any database write. `GEMINI_API_KEY`
+  stays server-side and is never included in client bundles or logs.
 - All database access uses Drizzle parameterized queries (no string-built SQL).
 - No `dangerouslySetInnerHTML` / `eval`; React's default escaping applies.
 - Security headers (`X-Content-Type-Options`, `Referrer-Policy`, `X-Frame-Options`,
@@ -186,9 +215,12 @@ connection is reused across files. A setup hook warms the connection and the
    | `DATABASE_URL`        | Postgres connection string (pooled, `sslmode=require`) |
    | `BETTER_AUTH_SECRET`  | `openssl rand -base64 32` — required              |
    | `BETTER_AUTH_URL`     | Your production URL, e.g. `https://apex.vercel.app` |
+   | `GEMINI_API_KEY`      | Google AI Studio key — required for AI features   |
+   | `GEMINI_MODEL`        | Optional model override, e.g. `gemini-3.6-flash`  |
 
    `BETTER_AUTH_URL` must match the deployed origin so session cookies and trusted
-   origins line up.
+   origins line up. `GEMINI_API_KEY` must be added to Vercel separately; local env
+   files are ignored by Git.
 
 5. **Apply migrations before/with the first deploy.** Either:
    - run `npm run db:migrate` locally against the production database, or
@@ -213,6 +245,9 @@ connection is reused across files. A setup hook warms the connection and the
   email provider is configured. Enable it by adding an email provider to Better Auth.
 - **Database pooling** — use Neon's pooler (or PgBouncer) connection string on
   Vercel. `prepare: false` is already set for pooler compatibility.
+- **AI duration** — AI pages declare a 60-second maximum duration, and demo
+  generation is capped at 250 responses per run. Large demo jobs can still hit
+  provider rate limits; retry with a smaller count or a less busy model.
 
 ## Project layout
 
@@ -223,17 +258,18 @@ src/
       auth/[...all]/                 Better Auth handler
       public/surveys/[slug]/responses/  Public submission endpoint
       surveys/[id]/export/           CSV/JSON downloads
-    dashboard/                       Owner area (list, new, edit, preview,
-                                     responses, analytics, demo-data)
+    dashboard/                       Owner area (list, new, AI builder, edit,
+                                     preview, responses, analytics, demo-data)
     survey/[slug]/                   Public survey form
     login/, signup/
   components/                        UI kit + feature components (analytics,
-                                     surveys, public form)
+                                     surveys, AI builder, public form)
   db/                                Drizzle schema + client
   lib/
+    ai/                              Gemini client, survey and demo generators
     analytics/                       compute + load
     exports/                         csv/json builders
-    synthetic/                       seeded PRNG + generator
+    synthetic/                       demo dataset persistence + PRNG utilities
     surveys/, responses/, validation/, session, auth, db-retry
 tests/
   unit/                              Pure-logic tests

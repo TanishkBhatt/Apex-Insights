@@ -14,6 +14,8 @@ import { surveys } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { db } from "@/db";
 
+export const maxDuration = 60;
+
 function renderValue(type: string, value: unknown): string {
   if (value === null || value === undefined) return "—";
   if (type === "yes_no") return value ? "Yes" : "No";
@@ -76,7 +78,7 @@ export default async function DemoDataPage({
             <EmptyState
               icon={<Database className="h-8 w-8" />}
               title="No demo data yet"
-              description="Generate a deterministic dataset above to try out analytics and exports."
+              description="Generate an AI-written dataset above to try out analytics and exports."
             />
           </CardBody>
         </Card>
@@ -87,10 +89,20 @@ export default async function DemoDataPage({
               title="Dataset details"
               actions={<Badge tone="violet">generator {dataset.generatorVersion}</Badge>}
             />
-            <CardBody className="grid gap-4 sm:grid-cols-3">
+            <CardBody className="grid gap-4 sm:grid-cols-4">
               <div>
-                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Seed</p>
+                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                  Generation ID
+                </p>
                 <p className="mt-1 break-all font-mono text-sm text-slate-800">{dataset.seed}</p>
+              </div>
+              <div>
+                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                  Model
+                </p>
+                <p className="mt-1 text-sm text-slate-800">
+                  {dataset.config.model ?? "Gemini"}
+                </p>
               </div>
               <div>
                 <p className="text-xs font-medium uppercase tracking-wide text-slate-500">

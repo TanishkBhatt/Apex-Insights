@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { LayoutDashboard, Plus, Settings } from "lucide-react";
+import { LayoutDashboard, Plus, Settings, Sparkles } from "lucide-react";
 import { Logo } from "@/components/logo";
 import { SignOutButton } from "@/components/sign-out-button";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -27,6 +27,13 @@ export default async function DashboardLayout({
               >
                 <LayoutDashboard className="h-4 w-4" aria-hidden />
                 Dashboard
+              </Link>
+              <Link
+                href="/dashboard/surveys/ai"
+                className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+              >
+                <Sparkles className="h-4 w-4" aria-hidden />
+                AI builder
               </Link>
               <Link
                 href="/dashboard/settings"

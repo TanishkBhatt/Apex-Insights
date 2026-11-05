@@ -20,13 +20,13 @@ const features = [
     icon: ListChecks,
     title: "Build any survey",
     description:
-      "Short text, paragraph, single and multiple choice, dropdown, linear scale and yes/no questions.",
+      "Create manually, start from a template, or ask Gemini for a draft. All 13 question types are fully editable before publishing.",
   },
   {
     icon: Sparkles,
-    title: "Synthetic demo data",
+    title: "AI demo data",
     description:
-      "Preview realistic analytics instantly with a deterministic, seed-based demo dataset. Clearly labelled, never mixed with real results.",
+      "Gemini writes coherent synthetic responses using your exact questions and options. Clearly labelled and never mixed with real results.",
   },
   {
     icon: BarChart3,
@@ -114,8 +114,8 @@ export default async function HomePage({
                 </h1>
                 <p className="animate-fade-up mt-5 text-lg text-slate-600 [animation-delay:120ms]">
                   Apex Insights is a survey platform for students, school projects and research.
-                  Design your questionnaire, publish a public link, and generate a clearly-labelled
-                  synthetic dataset to preview your analytics immediately.
+                  Build a survey manually or with Gemini, publish a public link, and generate
+                  clearly-labelled synthetic responses to preview your analytics immediately.
                 </p>
                 <div className="animate-fade-up mt-8 flex flex-wrap gap-3 [animation-delay:180ms]">
                   <Link href="/signup">
@@ -132,9 +132,9 @@ export default async function HomePage({
                 </div>
                 <ul className="animate-fade-up mt-8 space-y-2 text-sm text-slate-600 [animation-delay:240ms]">
                   {[
-                    "Unlimited surveys per account",
+                    "AI survey drafts you review before publishing",
                     "Public survey links, no respondent sign-up",
-                    "Separate real and synthetic datasets",
+                    "Clearly separated real and synthetic datasets",
                   ].map((item) => (
                     <li key={item} className="flex items-center gap-2">
                       <CheckCircle2 className="h-4 w-4 text-emerald-600" aria-hidden />

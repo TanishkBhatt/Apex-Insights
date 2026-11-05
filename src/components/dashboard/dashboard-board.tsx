@@ -548,12 +548,20 @@ export function DashboardBoard({
             Welcome back, {userName}. Everything here is private to your account.
           </p>
         </div>
-        <Link href="/dashboard/surveys/new">
-          <Button>
-            <Plus className="h-4 w-4" aria-hidden />
-            New survey
-          </Button>
-        </Link>
+        <div className="flex flex-wrap items-center gap-2">
+          <Link href="/dashboard/surveys/ai">
+            <Button variant="outline">
+              <Sparkles className="h-4 w-4" aria-hidden />
+              Generate with AI
+            </Button>
+          </Link>
+          <Link href="/dashboard/surveys/new">
+            <Button>
+              <Plus className="h-4 w-4" aria-hidden />
+              New survey
+            </Button>
+          </Link>
+        </div>
       </div>
 
       {actionError ? <Alert tone="error">{actionError}</Alert> : null}

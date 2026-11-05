@@ -249,7 +249,12 @@ export const demoDatasets = pgTable(
     seed: text("seed").notNull(),
     generatorVersion: text("generator_version").notNull(),
     config: jsonb("config")
-      .$type<{ count: number; pattern: string }>()
+      .$type<{
+        count: number;
+        pattern?: string;
+        model?: string;
+        context?: string;
+      }>()
       .notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),

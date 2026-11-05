@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Alert, Card, CardBody, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Field, Input } from "@/components/ui/input";
+import { Field, Input, Textarea } from "@/components/ui/input";
 import { LIMITS } from "@/lib/validation/survey";
 import type { ActionState } from "@/app/dashboard/surveys/actions";
 import { deleteDemoDataAction, generateDemoDataAction } from "@/app/dashboard/surveys/actions";
@@ -17,8 +17,8 @@ export function DemoDataPanel({
   hasDataset: boolean;
 }) {
   const router = useRouter();
-  const [count, setCount] = useState<string>("100");
-  const [seed, setSeed] = useState("");
+  const [count, setCount] = useState<string>("50");
+  const [context, setContext] = useState("");
   const [result, setResult] = useState<ActionState | null>(null);
   const [pending, setPending] = useState(false);
 
@@ -29,7 +29,7 @@ export function DemoDataPanel({
     try {
       const response = await generateDemoDataAction(surveyId, {
         count: Number(count),
-        seed: seed.trim() || undefined,
+        context: context.trim() || undefined,
       });
       setResult(response);
       if (response.ok) router.refresh();
@@ -86,40 +86,50 @@ export function DemoDataPanel({
               label="Number of responses"
               htmlFor="demo-count"
               error={fieldErrors?.count?.[0] ?? null}
-              hint={`${LIMITS.demoResponsesMin}–${LIMITS.demoResponsesMax}`}
+              hint={`${LIMITS.demoResponsesMin}–${LIMITS.demoAiResponsesMax} AI-generated responses`}
             >
               <Input
                 id="demo-count"
                 type="number"
                 inputMode="numeric"
                 min={LIMITS.demoResponsesMin}
-                max={LIMITS.demoResponsesMax}
+                max={LIMITS.demoAiResponsesMax}
                 value={count}
                 onChange={(event) => setCount(event.target.value)}
                 disabled={pending}
               />
             </Field>
             <Field
-              label="Seed (optional)"
-              htmlFor="demo-seed"
-              error={fieldErrors?.seed?.[0] ?? null}
-              hint="Same seed + count produces identical data."
+              label="Audience or scenario (optional)"
+              htmlFor="demo-context"
+              error={fieldErrors?.context?.[0] ?? null}
+              hint="Give Gemini a persona, location, product or tone to keep respondents coherent."
             >
-              <Input
-                id="demo-seed"
-                type="text"
-                maxLength={100}
-                placeholder="e.g. spring-2026"
-                value={seed}
-                onChange={(event) => setSeed(event.target.value)}
+              <Textarea
+                id="demo-context"
+                className="min-h-20"
+                maxLength={LIMITS.demoContextMax}
+                placeholder="e.g. Year 10 students at a UK secondary school, mixed satisfaction"
+                value={context}
+                onChange={(event) => setContext(event.target.value)}
                 disabled={pending}
               />
             </Field>
           </div>
 
+          <p className="text-xs text-slate-500">
+            Gemini writes realistic answers using your exact question options and limits. Demo
+            data remains separate from real responses, and a failed AI call never writes a
+            partial dataset.
+          </p>
+
           <div className="flex flex-wrap gap-2">
             <Button type="submit" disabled={pending}>
-              {pending ? "Working…" : hasDataset ? "Regenerate demo data" : "Generate demo data"}
+              {pending
+                ? "Gemini is generating…"
+                : hasDataset
+                  ? "Regenerate with AI"
+                  : "Generate with AI"}
             </Button>
             {hasDataset ? (
               <Button

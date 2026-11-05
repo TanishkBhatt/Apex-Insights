@@ -13,16 +13,30 @@ import {
 import {
   surveyWithQuestionsSchema,
   demoGenerationSchema,
+  aiSurveyRequestSchema,
 } from "@/lib/validation/survey";
 import {
   generateSyntheticDataset,
   deleteDemoDatasetForOwner,
 } from "@/lib/synthetic/generator";
 import { deleteResponseForOwner } from "@/lib/responses/service";
+import { generateSurveyDraft, type AiSurveyDraft } from "@/lib/ai/survey";
+import { AiConfigurationError, AiGenerationError } from "@/lib/ai/errors";
 
 export type ActionState =
   | { ok: true; surveyId?: string; message?: string }
   | { ok: false; error: string; fieldErrors?: Record<string, string[] | undefined> };
+
+export type AiSurveyActionState =
+  | { ok: true; message: string; draft: AiSurveyDraft }
+  | { ok: false; error: string };
+
+function aiErrorMessage(error: unknown): string | null {
+  if (error instanceof AiConfigurationError || error instanceof AiGenerationError) {
+    return error.message;
+  }
+  return null;
+}
 
 function toFieldErrors(
   issues: Array<{ path: PropertyKey[]; message: string }>,
@@ -206,22 +220,51 @@ export async function generateDemoDataAction(
   }
 
   try {
-    const seed =
-      parsed.data.seed ||
-      `demo-${surveyId.slice(0, 8)}-${parsed.data.count}`;
-    await generateSyntheticDataset(user.id, surveyId, seed, parsed.data.count);
+    await generateSyntheticDataset(user.id, surveyId, {
+      count: parsed.data.count,
+      context: parsed.data.context,
+    });
     revalidatePath(`/dashboard/surveys/${surveyId}/demo-data`);
     revalidatePath(`/dashboard/surveys/${surveyId}/analytics`);
     return {
       ok: true,
-      message: `Generated ${parsed.data.count} demo response${parsed.data.count === 1 ? "" : "s"}.`,
+      message: `Generated ${parsed.data.count} AI demo response${
+        parsed.data.count === 1 ? "" : "s"
+      }.`,
     };
   } catch (error) {
     const message =
-      error instanceof SurveyServiceError
+      aiErrorMessage(error) ??
+      (error instanceof SurveyServiceError
         ? error.message
-        : "Could not generate demo data. Please try again.";
+        : "Could not generate demo data. Please try again.");
     return { ok: false, error: message };
+  }
+}
+
+export async function generateSurveyDraftAction(
+  payload: unknown,
+): Promise<AiSurveyActionState> {
+  await requireUser();
+
+  const parsed = aiSurveyRequestSchema.safeParse(payload);
+  if (!parsed.success) {
+    return { ok: false, error: "Describe the survey you want to create." };
+  }
+  if (parsed.data.messages.at(-1)?.role !== "user") {
+    return { ok: false, error: "Send a message before generating a draft." };
+  }
+
+  try {
+    const result = await generateSurveyDraft(parsed.data);
+    return { ok: true, ...result };
+  } catch (error) {
+    return {
+      ok: false,
+      error:
+        aiErrorMessage(error) ??
+        "Could not generate a survey draft. Please try again.",
+    };
   }
 }
 

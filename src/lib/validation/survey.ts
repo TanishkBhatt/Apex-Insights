@@ -101,6 +101,8 @@ export const LIMITS = {
   cpuAnswersMax: 100,
   demoResponsesMin: 1,
   demoResponsesMax: 2000,
+  demoAiResponsesMax: 250,
+  demoContextMax: 600,
 } as const;
 
 const trimmed = (max: number) => z.string().trim().max(max);
@@ -516,15 +518,29 @@ export const demoGenerationSchema = z.object({
     .number()
     .int()
     .min(LIMITS.demoResponsesMin)
-    .max(LIMITS.demoResponsesMax),
-  seed: z
-    .string()
-    .trim()
-    .max(100)
+    .max(LIMITS.demoAiResponsesMax),
+  context: trimmed(LIMITS.demoContextMax)
     .optional()
     .transform((value) => (value ? value : undefined)),
 });
 export type DemoGenerationInput = z.infer<typeof demoGenerationSchema>;
+
+export const aiChatMessageSchema = z.object({
+  role: z.enum(["user", "assistant"]),
+  content: z.string().trim().min(1).max(4000),
+});
+
+export const aiSurveyRequestSchema = z.object({
+  messages: z.array(aiChatMessageSchema).min(1).max(24),
+  currentDraft: surveyWithQuestionsSchema.nullable().optional(),
+});
+export type AiSurveyRequest = z.infer<typeof aiSurveyRequestSchema>;
+
+export const aiSurveyResponseSchema = z.object({
+  message: z.string().trim().min(1).max(2000),
+  survey: surveyWithQuestionsSchema,
+});
+export type AiSurveyResponse = z.infer<typeof aiSurveyResponseSchema>;
 
 export function defaultConfigFor(type: QuestionType): {
   options?: string[];
